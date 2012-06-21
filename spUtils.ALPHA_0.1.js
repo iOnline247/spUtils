@@ -33,12 +33,43 @@
  * POSSIBILITY OF SUCH DAMAGE.
 */
 
-(function( window, $, undefined ) {
+(function( window, undefined ) {
 	// Use the correct document accordingly with window argument (sandbox)
 	var document = window.document,
 		navigator = window.navigator,
-		location = window.location
+		location = window.location,
+		_privy = "_spUtilsUnderscoredForAReason",
+		_internalProps = {
+			"_spUtilsUnderscoredForAReason" : {
+
+			}
+		}
 	; //local vars
+
+
+/*
+
+function ISODateString(d){
+ function pad(n){return n<10 ? '0'+n : n}
+ return d.getUTCFullYear()+'-'
+      + pad(d.getUTCMonth()+1)+'-'
+      + pad(d.getUTCDate())+'T'
+      + pad(d.getUTCHours())+':'
+      + pad(d.getUTCMinutes())+':'
+      + pad(d.getUTCSeconds())+'Z'}
+
+var d = new Date();
+console.log(ISODateString(d));
+
+
+
+
+
+
+
+
+
+	Figure this out later
 
 	if ( typeof $ === 'undefined' ) {
 		//Borrowed from HTML5 Boilerplate
@@ -49,20 +80,21 @@
 		g.src='//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js';
 		s.parentNode.insertBefore( g, s );
 	}
-
+*/
 	//Sanbox SharePoint variables
 	var executeScript = ExecuteOrDelayUntilScriptLoaded,
 		SP,
 		//Booleans for environment checking
 		isJquery = ( $ || window.jQuery ) ? true : false,
 		isSPServices = ( $ && $.fn.SPServices ) ? true : false,
+		//ternary op ~ boolean result.
 		isSP = ( typeof executeScript !== 'undefined' ) ?
 			(function() {
-				if ( typeof SP === 'undefined' ) {
+				if ( typeof window.SP === 'undefined' ) {
 					//console.log( "execute SP" );
 					executeScript( function() {
 						//Set SP to global SP namespace.
-						SP = window.SP;
+						//SP = window.SP;
 					}, 'sp.js');
 				}
 				//Set isSP to true.
@@ -72,7 +104,21 @@
 			false,
 		isRoboCAML = ( window.roboCAML ) ? true : false,
 
+		//Helper methods
+		//Determines what type of parameter is being passed
+		//http://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
+		toType = function(obj) {
+			return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+		},
 		//Create methods
+		addNotification = function( feedback, persistence ) {
+			SP.UI.Notify.addNotification( feedback, persistence );
+		},
+		closeDialog = function( result ) {
+			// SP.UI.DialogResult.OK
+			// SP.UI.DialogResult.Cancel
+			SP.UI.ModalDialog.commonModalDialogClose( result );
+		},
 		createCallback = function( ctx, a ) {
 			return function () {
 				var argLength = arguments.length;
@@ -92,7 +138,7 @@
 				return b.apply( a, arguments );
 			};
 		},
-		getDDLVal = function( columnName ) {
+		getFormVal = function( columnName ) {
 			var ddlVal = $("select[title='" + columnName + "']").val();
 
 			if ( ddlVal === undefined ) {
@@ -101,14 +147,29 @@
 
 			return ddlVal;
 		},
+
+
+
+
+
+		//GetList Op??? Where you @?
+
+
+
+
+
+
+
+
 		getListItems = function( opt ) {
 			/* Valid options
-			* webURL, listName, CAMLQuery, Folder, Include
+			* webURL, listName, CAMLQuery, Folder, Include, success, error, debug
 			*/
 			//Add opt to a property of this function. This is useful when the delegate is called.
 			this.options = opt || {};
 
-			var targetList,
+			var context,
+				targetList,
 				camlQuery,
 				includeFields = "Include(",
 				loopLength
@@ -121,38 +182,38 @@
 				} else {
 					context = SP.ClientContext.get_current();
 				}
-				
+
 				//debugger;
 				targetList = context.get_web().get_lists().getByTitle( opt.listName );
 
 				//CAML Query
 				if ( opt.hasOwnProperty("CAMLQuery") ) {
 					camlQuery = new SP.CamlQuery();
-					camlQuery.set_viewXml( opt.CAMLQuery );		
+					camlQuery.set_viewXml( opt.CAMLQuery );
 				} else {
-					camlQuery = SP.CamlQuery.createAllItemsQuery();	
+					camlQuery = SP.CamlQuery.createAllItemsQuery();
 				}
-				
+
 				//Folder options
 				if ( opt.hasOwnProperty("Folder") ) {
 					camlQuery.set_folderServerRelativeUrl( opt.Folder );
 				}
-				
+
 				//console.log( SP.CamlQuery.get_viewXml() );
 				//debugger;
 
 				this.listItems = targetList.getItems( camlQuery );
 
-				
+
 				//Fields retrieved using Include technique
 				if ( opt.hasOwnProperty("Include") ) {
 					loopLength = opt.Include.length;
-					
+
 					while ( loopLength-- ) {
 						//console.log( opt.Include[ loopLength ] );
 						includeFields += opt.Include[ loopLength ];
 					}
-					
+
 					includeFields += ")"; //Close Include
 					context.load( listItems, includeFields );
 				} else {
@@ -160,10 +221,16 @@
 				}
 
 				//Hey idiot... Give ppl a callback /facepalm
-				context.executeQueryAsync( getListItemsSucceeded, getListItemsFailed );
+				//Test callback failover implementation...
+				context.executeQueryAsync(
+					opt.success || getListItemsSucceeded,
+					opt.error || getListItemsFailed
+				);
 			}
 			catch ( e ) {
-				alert( e );
+				if ( opt.debug ) {
+					alert( e );
+				}
 			}
 		},
 		getListItemsSucceeded = function( sender, args ) {
@@ -174,8 +241,9 @@
 				arrTempVal,
 				picName,
 				enumerator = listItems.getEnumerator(),
-				listData = listItems.get_data(),
-				$appendTo = $("#ourMemories");
+				listData = listItems.get_data()
+
+			; //local vars
 
 
 			for ( var prop in listData ) {
@@ -186,37 +254,125 @@
 
 			while ( enumerator.moveNext() ) {
 				var listItem = enumerator.get_current();
-				
+
 				// Here's your chance to do something awesome...
 				// console.log( listItem.get_item("Title") );
 			}
 		},
 		getListItemsFailed = function(sender, args) {
 			var msg = 'Request failed. ' + args.get_message() + '\n';
-			
+
 			if ( args.get_stackTrace() ) {
 				msg += args.get_stackTrace();
 			}
-			
+
 			alert( msg );
 		},
-		onDialogClose = function( dialogResult, returnValue ) {
-			//alert("dialog result: " + dialogResult );
-			if ( dialogResult === SP.UI.DialogResult.OK ) {
-				SP.UI.ModalDialog.commonModalDialogClose( SP.UI.DialogResult.OK );
-				SP.UI.Notify.addNotification("This item has been saved...", false);
+		getProp = function( prop ) {
+			var arrOfProps = prop.split("."),
+				arrOfPropsLength = arrOfProps.length,
+				i,
+				returnVal = _internalProps[ prop ]
+
+			;//local vars
+
+			// Loop through dot notation of string passed in. End result = last property of string
+			if ( arrOfPropsLength ) {
+				for ( i=1; i<=arrOfPropsLength; i++ ) {
+					returnVal = _internalProps[ arrOfProps[ arrOfPropsLength -1 ] ];
+				}
 			}
-			if ( dialogResult === SP.UI.DialogResult.cancel ) {
-				SP.UI.ModalDialog.commonModalDialogClose( SP.UI.DialogResult.Cancel );
-				SP.UI.Notify.addNotification("Operation was cancelled...", false);
-			}
+
+			return returnVal;
 		},
-		openModalForm = function( staticListName, ID, title, formType, options ) {
+		// http://stackoverflow.com/questions/647259/javascript-query-string
+		getQueryString = function() {
+			var result = {}, queryString = location.search.substring(1),
+				re = /([^&=]+)=([^&]*)/g,
+				m;
+
+			while ( m = re.exec( queryString ) ) {
+				result[ decodeURIComponent( m[1] ) ] = decodeURIComponent( m[2] );
+			}
+			return result;
+		},
+
+
+
+
+/*
+
+		getUniqueItems = function( opt ) {
+
+			Need to resolve:
+				weburl
+				listId [guid]
+				staticName
+				viewId [guid] ~ Use default list view unless passed as param
+
+
+
+			$.ajax({
+				url: weburl+'/_layouts/filter.aspx?ListId='+escape(listId)+'&FieldInternalName='+internalName+'&ViewId='+escape(viewId)+'&FilterOnly=1&Filter=1',
+				success: function( status, data ) {
+					//Do Something  } });
+			//do something awsome
+
+		},
+
+
+
+*/
+
+
+
+		onDialogClose = function( dialogResult, returnValue, message ) {
+			var feedback = ( dialogResult ) ?
+				message || "This item has been saved..." :
+				message || "Operation was cancelled..."
+			;
+			//alert("dialog result: " + dialogResult );
+			spUtils.closeDialog( dialogResult );
+			spUtils.addNotification( feedback, false);
+		},
+		openModalForm = function( options ) {
+			/**************************************************************************************************************
+			// Why so many options M$? /smh
+			// http://msdn.microsoft.com/en-us/library/ff410259
+			//
+			// Valid options listed here: //http://blogs.msdn.com/b/sharepointdev/archive/2011/01/13/using-the-dialog-platform.aspx
+			*************************
+			// These options are the bare minimum needed to open a modal dialog.
+			// staticListName
+			// ID
+			*************************
+			// formType ~ Default: NewForm
+			// title
+			// url
+			// html
+			// x ~ Default to center of axis
+			// y ~ Default to center of axis
+			// width: 800 ~ Default
+			// height: 600 ~ Default.
+			// allowMaximize: true ~ Default.
+			// showMaximized: false ~ Default.
+			// showClose: true ~ Default.
+			// autoSize: false ~ Default.
+			// callback: onDialogClose ~ Default.
+
+			********************************************************************
+			Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
+			*********************************************************************
+			// args: {} ~ Default.
+			***************************************************************************************************************/
+
+			// Safeguard the options param
 			options = options || {};
 			//url will find current site for each scenario
-			var url;
+			var url,
+				formType
+			; //local vars
 			//L_Menu_BaseUrl --- //http://community.zevenseas.com/Blogs/Vardhaman/Lists/Posts/Post.aspx?ID=9
-
 
 			if ( options.hasOwnProperty("url") ) {
 				//Locates full path URL's or relative URL's
@@ -228,14 +384,14 @@
 				//deletes property to prevent overwriting when extending options
 				delete options.url;
 			} else {
-				switch ( formType.toUpperCase() ) {
-					case "DISPLAY":
+				switch ( formType.toLowerCase() ) {
+					case "display":
 						formType = "DispForm";
 						break;
-					case "EDIT":
+					case "edit":
 						formType = "EditForm";
 						break;
-					case "NEW":
+					case "new":
 						formType = "NewForm";
 						break;
 					default:
@@ -245,13 +401,29 @@
 
 				//Default the base URL to the url variable
 				if ( L_Menu_BaseUrl === "" ) {
-					url = "/Lists/" + staticListName + "/" + formType + ".aspx?ID=" + ID;
+					url = "/Lists/" + options.staticListName + "/" + formType + ".aspx?ID=" + options.ID;
 				} else {
-					url = L_Menu_BaseUrl + "/Lists/" + staticListName + "/" + formType + ".aspx?ID=" + ID;
+					url = L_Menu_BaseUrl + "/Lists/" + options.staticListName + "/" + formType + ".aspx?ID=" + options.ID;
 				}
 			}
 
-			//Valid options listed here: //http://blogs.msdn.com/b/sharepointdev/archive/2011/01/13/using-the-dialog-platform.aspx
+			//Rid jQuery dependency on this method...
+			var opt = {
+				title: options.title || "",
+				url: url,
+				html: options.html || undefined,
+				height: options.height || 600,
+				width: options.width || 800,
+				allowMaximize: options.allowMaximize || true,
+				showMaximized: options.showMaximized || false,
+				showClose: options.showClose || true,
+				autoSize: options.autoSize || false,
+				dialogReturnValueCallback: options.callback || onDialogClose,
+				//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
+				args: options.args || {}
+			};
+
+/*
 			var opt = $.extend({}, {
 				title: title || "",
 				url: url,
@@ -267,34 +439,92 @@
 				//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
 				args: {}
 			}, options);
+*/
 
+			debugger;
 			//Create modal
 			SP.UI.ModalDialog.showModalDialog( opt );
 		},
+		// A modified version of:
+		// http://geekswithblogs.net/SoYouKnow/archive/2011/04/06/setting-sharepoint-drop-down-lists-w-jquery---20-items.aspx
+		// No more global variables and needless DOM walking.
+		setFormVal = function( fieldTitle, lookupVal ) {
+			//Set default value for lookups with less that 20 items
+			var $selectCtrl = ("select[title='" + fieldTitle + "']"),
+				$inputCtrl = $("input[title='" + fieldTitle + "']"),
+				choices,
+				choiceArray,
+				hiddenInput,
+				index
+			;
+
+			if ( $selectCtrl.html() !== null ) {
+			   $selectCtrl.val( lookupVal );
+			} else {
+				choices = $inputCtrl.attr("choices");
+				hiddenInput = $inputCtrl.attr("optHid");
+				$("input[id='" + hiddenInput + "']").attr( "value", lookupVal );
+
+				choiceArray = choices.split("|");
+				for ( index = 1; index < choiceArray.length; index = index + 2 ) {
+					if ( choiceArray[ index ] == lookupVal ) {
+						$inputCtrl.val( choiceArray[ index - 1 ] );
+					}
+				}
+			}
+		},
+		setProp = function( prop, v ) {
+			/***********************************
+				implementation needs help..
+				Want to be able to pass in a string that represent the properties; e.g:
+				prop1.List.anotherPropsVal
+				and then cache and return the value in the correct position
+			*************************************/
+			var arrOfProps = prop.split("."),
+				arrOfPropsLength = arrOfProps.length,
+				firstProp = arrOfProps[ 0 ],
+				lastProp = arrOfProps[ arrOfPropsLength - 1 ],
+				//i = 1,
+				returnVal
+
+			; //local vars
+
+			// checks param for
+			if ( arrOfPropsLength === 1 ) {
+				//arguments.callee needs to be in here somewhere...
+				return this[ prop ] = v;
+			}
+/*			
+			if ( !lastProp ) {
+				return this[ firstProp ] = v;
+			}
+*/
+			this.call( _internalProps[ arrOfProps[ 0 ] ], arrOfProps, v );
+	
+
+		},
 		//Global Object
-		spUtils
+		spUtils = {}
 	; //variable declarations
 
+
+	//Expose methods
+	spUtils.createCallback = createCallback;
+	spUtils.createDelegate = createDelegate;
+	spUtils.getProp = getProp;
+	spUtils.setProp = setProp;
+
 	//Expose methods based on environment booleans
-	if ( isJquery && !isSP ) {
-		spUtils = (function() {
-			return {
-				createCallback : createCallback,
-				createDelegate : createDelegate,
-				getDDLVal : getDDLVal
-			};
-		})();
-	} else if ( isJquery && isSP ) {
-		spUtils = (function() {
-			return {
-				createCallback : createCallback,
-				createDelegate : createDelegate,
-				getDDLVal : getDDLVal,
-				getListItems : getListItems,
-				onDialogClose : onDialogClose,
-				openModalForm : openModalForm
-			};
-		})();
+	if ( isSP ) {
+		spUtils.addNotification = addNotification;
+		spUtils.closeDialog = closeDialog;
+		spUtils.getListItems = getListItems;
+		spUtils.onDialogClose = onDialogClose;
+		spUtils.openModalForm = openModalForm;
+	}
+	if ( isJquery ) {
+		spUtils.getFormVal = getFormVal;
+		spUtils.setFormVal = setFormVal;
 	}
 
 	//Expose spUtils as a global object

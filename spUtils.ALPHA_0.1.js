@@ -39,33 +39,36 @@
 		navigator = window.navigator,
 		location = window.location,
 		_privy = "_spUtilsUnderscoredForAReason",
-		_internalProps = {
-			"_spUtilsUnderscoredForAReason" : {
-
-			}
-		}
+		_internalProps = {}
 	; //local vars
 
+	_internalProps[ _privy ] = {
+		//Used for internal properties of spUtils
+
+	};
+
+	//map over console if undefined.
+	if ( !window.console ) {
+		console = {
+			dir : function() {},
+			error : function() {},
+			info : function() {},
+			log : function() {
+				alert( message );
+			}
+		};
+	}
 
 /*
 
-function ISODateString(d){
- function pad(n){return n<10 ? '0'+n : n}
- return d.getUTCFullYear()+'-'
-      + pad(d.getUTCMonth()+1)+'-'
-      + pad(d.getUTCDate())+'T'
-      + pad(d.getUTCHours())+':'
-      + pad(d.getUTCMinutes())+':'
-      + pad(d.getUTCSeconds())+'Z'}
-
-var d = new Date();
-console.log(ISODateString(d));
 
 
 
 
-
-
+var jQueryScript = document.createElement("script");
+                    jQueryScript.type = "text/javascript";
+                    jQueryScript.src = “/_layouts/MyJSPath/myjsfile.js;
+                    document.getElementsByTagName("head")[0].appendChild(jQueryScript);
 
 
 
@@ -83,36 +86,97 @@ console.log(ISODateString(d));
 */
 	//Sanbox SharePoint variables
 	var executeScript = ExecuteOrDelayUntilScriptLoaded,
-		SP,
 		//Booleans for environment checking
 		isJquery = ( $ || window.jQuery ) ? true : false,
 		isSPServices = ( $ && $.fn.SPServices ) ? true : false,
 		//ternary op ~ boolean result.
 		isSP = ( typeof executeScript !== 'undefined' ) ?
-			(function() {
+			( function() {
 				if ( typeof window.SP === 'undefined' ) {
 					//console.log( "execute SP" );
 					executeScript( function() {
-						//Set SP to global SP namespace.
-						//SP = window.SP;
 					}, 'sp.js');
 				}
 				//Set isSP to true.
 				return true;
-			})() :
+			}() ) :
 			//Set isSP to false.
 			false,
 		isRoboCAML = ( window.roboCAML ) ? true : false,
 
-		//Helper methods
+
+		/***********************************************************
+		************************************************************
+			//Helper methods
+		************************************************************
+		***********************************************************/
+		getListItemsSucceeded = function( sender, args ) {
+
+			//debugger;
+
+			var output = '',
+				location = window.location,
+				fileType,
+				fileRef,
+				arrTempVal,
+				picName,
+				enumerator = this.listItems.getEnumerator(),
+				listData = this.listItems.get_data()
+
+			; //local vars
+
+
+			for ( var prop in listData ) {
+				if ( listData.hasOwnProperty( prop ) ) {
+					console.dir( listData[ prop ].get_fieldValues() );
+				}
+			}
+
+			while ( enumerator.moveNext() ) {
+				var listItem = enumerator.get_current();
+
+				// Here's your chance to do something awesome...
+				// console.log( listItem.get_item("Title") );
+			}
+		},
+		getListItemsFailed = function( sender, args ) {
+			var msg = 'Request failed. ' + args.get_message() + '\n';
+
+			if ( args.get_stackTrace() ) {
+				msg += args.get_stackTrace();
+			}
+
+			log( msg );
+		},
 		//Determines what type of parameter is being passed
 		//http://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
-		toType = function(obj) {
-			return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+		toType = function( obj ) {
+			return ( {} ).toString.call( obj ).match(/\s([a-zA-Z]+)/)[ 1 ].toLowerCase();
 		},
-		//Create methods
-		addNotification = function( feedback, persistence ) {
-			SP.UI.Notify.addNotification( feedback, persistence );
+		
+		/***********************************************************
+		************************************************************
+			//Create methods
+		************************************************************
+		***********************************************************/
+		addStatus = function( message, color ) {
+			var statusId = SP.UI.Status.addStatus( message );
+
+			if ( color ) {
+				SP.UI.Status.setStatusPriColor( statusId, color );
+			}
+
+			return statusId;
+
+
+/*
+			window.setTimeout(
+				function() {
+					SP.UI.Status.removeStatus( statusId );
+				},
+				7500
+			);
+*/
 		},
 		closeDialog = function( result ) {
 			// SP.UI.DialogResult.OK
@@ -199,7 +263,7 @@ console.log(ISODateString(d));
 					camlQuery.set_folderServerRelativeUrl( opt.Folder );
 				}
 
-				//console.log( SP.CamlQuery.get_viewXml() );
+				//log( SP.CamlQuery.get_viewXml() );
 				//debugger;
 
 				this.listItems = targetList.getItems( camlQuery );
@@ -210,63 +274,34 @@ console.log(ISODateString(d));
 					loopLength = opt.Include.length;
 
 					while ( loopLength-- ) {
-						//console.log( opt.Include[ loopLength ] );
+						//log( opt.Include[ loopLength ] );
 						includeFields += opt.Include[ loopLength ];
+
+						if ( loopLength !== 0 ) {
+							includeFields += ",";
+						}
+						//log( loopLength );
 					}
 
 					includeFields += ")"; //Close Include
-					context.load( listItems, includeFields );
+					context.load( this.listItems, includeFields );
 				} else {
-					context.load( listItems );
+					context.load( this.listItems );
 				}
 
-				//Hey idiot... Give ppl a callback /facepalm
-				//Test callback failover implementation...
+
+				//debugger;
+
 				context.executeQueryAsync(
-					opt.success || getListItemsSucceeded,
-					opt.error || getListItemsFailed
+					Function.createDelegate( this, opt.success || getListItemsSucceeded ),
+					Function.createDelegate( this, opt.error || getListItemsFailed )
 				);
 			}
 			catch ( e ) {
 				if ( opt.debug ) {
-					alert( e );
+					log( e );
 				}
 			}
-		},
-		getListItemsSucceeded = function( sender, args ) {
-			var output = '',
-				location = window.location,
-				fileType,
-				fileRef,
-				arrTempVal,
-				picName,
-				enumerator = listItems.getEnumerator(),
-				listData = listItems.get_data()
-
-			; //local vars
-
-
-			for ( var prop in listData ) {
-				if ( listData.hasOwnProperty( prop ) ) {
-					console.dir( listData[ prop ].get_fieldValues() );
-				}
-			}
-
-			while ( enumerator.moveNext() ) {
-				var listItem = enumerator.get_current();
-
-				// Here's your chance to do something awesome...
-				// console.log( listItem.get_item("Title") );
-			}
-		},
-		getListItemsFailed = function(sender, args) {
-			var msg = 'Request failed. ' + args.get_message() + '\n';
-
-			if ( args.get_stackTrace() ) {
-				msg += args.get_stackTrace();
-			}
-
-			alert( msg );
 		},
 		getProp = function( prop ) {
 			var arrOfProps = prop.split("."),
@@ -316,16 +351,37 @@ console.log(ISODateString(d));
 				url: weburl+'/_layouts/filter.aspx?ListId='+escape(listId)+'&FieldInternalName='+internalName+'&ViewId='+escape(viewId)+'&FilterOnly=1&Filter=1',
 				success: function( status, data ) {
 					//Do Something  } });
-			//do something awsome
+			//do something awesome
 
 		},
 
 
 
 */
+		isoDate = function( d ) {
+			//console.log( spUtils.ISODateString( new Date() ) );
 
+			//defaults to new date
+			d = d || new Date();
 
+			function pad( n ) {
+				return n < 10 ? '0' + n : n;
+			}
 
+			return d.getUTCFullYear() + '-' +
+				pad( d.getUTCMonth() +1 ) + '-' +
+				pad( d.getUTCDate() ) + 'T' +
+				pad( d.getUTCHours() ) +':' +
+				pad( d.getUTCMinutes() )+':' +
+				pad( d.getUTCSeconds() )+'Z'
+			;
+		},
+		log = function( message ) {
+			console.log( message );
+		},
+		notify = function( feedback, persistent ) {
+			return SP.UI.Notify.addNotification( feedback, persistent );
+		},
 		onDialogClose = function( dialogResult, returnValue, message ) {
 			var feedback = ( dialogResult ) ?
 				message || "This item has been saved..." :
@@ -333,7 +389,7 @@ console.log(ISODateString(d));
 			;
 			//alert("dialog result: " + dialogResult );
 			spUtils.closeDialog( dialogResult );
-			spUtils.addNotification( feedback, false);
+			spUtils.notify( feedback, false );
 		},
 		openModalForm = function( options ) {
 			/**************************************************************************************************************
@@ -441,14 +497,18 @@ console.log(ISODateString(d));
 			}, options);
 */
 
-			debugger;
+			//debugger;
 			//Create modal
 			SP.UI.ModalDialog.showModalDialog( opt );
 		},
-		// A modified version of:
-		// http://geekswithblogs.net/SoYouKnow/archive/2011/04/06/setting-sharepoint-drop-down-lists-w-jquery---20-items.aspx
-		// No more global variables and needless DOM walking.
+		removeNotify = function( id ) {
+			SP.UI.Notify.removeNotification( id );
+		},
 		setFormVal = function( fieldTitle, lookupVal ) {
+			// A modified version of:
+			// http://geekswithblogs.net/SoYouKnow/archive/2011/04/06/setting-sharepoint-drop-down-lists-w-jquery---20-items.aspx
+			// No more global variables and needless DOM walking.
+
 			//Set default value for lookups with less that 20 items
 			var $selectCtrl = ("select[title='" + fieldTitle + "']"),
 				$inputCtrl = $("input[title='" + fieldTitle + "']"),
@@ -489,38 +549,60 @@ console.log(ISODateString(d));
 
 			; //local vars
 
-			// checks param for
+			if ( !_internalProps.hasOwnProperty( arrOfProps[ arrOfPropsLength - 1 ] ) ) {
+				_internalProps[ arrOfProps[ arrOfPropsLength - 1 ] ] = {};
+			}
+			// checks param for final property in array
 			if ( arrOfPropsLength === 1 ) {
 				//arguments.callee needs to be in here somewhere...
 				return this[ prop ] = v;
 			}
-/*			
+/*
 			if ( !lastProp ) {
 				return this[ firstProp ] = v;
 			}
 */
 			this.call( _internalProps[ arrOfProps[ 0 ] ], arrOfProps, v );
-	
+
+/*
+			for ( ; i<=arrOfPropsLength; i++ ) {
+				//If prop doesn't exist
+				if ( !_internalProps.hasOwnProperty( arrOfProps[ i - 1 ] ) ) {
+					_internalProps[ arrOfProps[ i - 1 ] ] = {};
+				}
+
+
+
+				if ( i === arrOfPropsLength ) {
+					_internalProps[ arrOfProps[ i - 1 ] ] = v;
+				}
+*/
 
 		},
 		//Global Object
-		spUtils = {}
+		spUtils = {
+			//Expose defautl methods
+			createCallback : createCallback,
+			createDelegate : createDelegate,
+			getProp : getProp,
+			getQueryString : getQueryString,
+			isoDate : isoDate,
+			log : log,
+			setProp : setProp
+		}
 	; //variable declarations
 
 
-	//Expose methods
-	spUtils.createCallback = createCallback;
-	spUtils.createDelegate = createDelegate;
-	spUtils.getProp = getProp;
-	spUtils.setProp = setProp;
+
 
 	//Expose methods based on environment booleans
 	if ( isSP ) {
-		spUtils.addNotification = addNotification;
+		spUtils.notify = notify;
 		spUtils.closeDialog = closeDialog;
 		spUtils.getListItems = getListItems;
 		spUtils.onDialogClose = onDialogClose;
 		spUtils.openModalForm = openModalForm;
+		spUtils.removeNotify = removeNotify;
 	}
 	if ( isJquery ) {
 		spUtils.getFormVal = getFormVal;

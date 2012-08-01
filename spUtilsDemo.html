@@ -1,0 +1,58 @@
+<script type="text/javascript" src="/SPDev/scripts/roboCAML.js"></script>
+<script type="text/javascript" src="/SPDev/scripts/spUtils.ALPHA_0.1.js"></script>
+
+
+<script type="text/javascript">
+	//console.dir(SP);
+	//debugger;
+//	ExecuteOrDelayUntilScriptLoaded( 
+//		function() {
+		//alert("me");
+	
+			spUtils.getListItems({
+				//webURL: ,
+				listName : "scripts",
+				//CAMLQuery,
+				//Folder,
+				Include : ["Title", "ID"],
+				success : function( data, ctx ) {
+					
+					for ( var i = 0; i < data.length; i++ ) {
+						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+					}
+	
+					//debugger;
+				},
+				error : function( ctx, error ) {
+					debugger;
+				},
+				debug : true
+			});	
+			
+			spUtils.getListItems({
+				//webURL: ,
+				listName : "pages",
+				//CAMLQuery,
+				//Folder,
+				Include : ["Title", "ID"],
+				success : function( data, ctx ) {
+					
+					for ( var i = 0; i < data.length; i++ ) {
+						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+					}
+	
+					//debugger;
+				},
+				error : function( ctx, error ) {
+					debugger;
+				},
+				debug : true
+			});	
+	
+//		}, 
+//		'sp.js'
+//	);
+
+</script>
+
+<div id="showMe"></div>

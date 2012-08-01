@@ -33,7 +33,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
 */
 
-(function( window, undefined ) {
+(function( window ) {
 	// Use the correct document accordingly with window argument (sandbox)
 	var document = window.document,
 		navigator = window.navigator,
@@ -44,7 +44,8 @@
 
 	_internalProps[ _privy ] = {
 		//Used for internal properties of spUtils
-
+		"_spBodyOnLoadFunctionNamesQueued" : false,
+		"onLoadFunctions" : []
 	};
 
 	//map over console if undefined.
@@ -53,16 +54,71 @@
 			dir : function() {},
 			error : function() {},
 			info : function() {},
-			log : function() {
+			log : function( message ) {
 				alert( message );
 			}
 		};
 	}
 
+	//console.dir( _spBodyOnLoadFunctionNames );
+
 /*
 
 
+function AjaxRequest( options ) {
+	$.ajax({
+		async: options.isAsync,
+		url: options.queryURL,
+		//dataType: "xml",  <--- stripped due to publishing page xml parseerror. See link below
+		contentType: "text/xml;charset='utf-8'",
+		complete: function ( xData, Status ) {
+			var webPartMarkup = $( xData.responseText ).find( options.elementID ).html();
+			$( options.elementID ).html( webPartMarkup ).css({ opacity: 0.0 }).animate({ opacity: 1.0 }, options.effectDelay );
+		}
+	});
+}
 
+function AjaxifyWebpart( options ) {
+	if ( options.elementID ) {
+		$( options.elementID ).html( options.waitMessage );
+		AjaxRequest( options );
+	} else {
+		$( "#MSO_ContentTable, #ctl00_MSO_ContentDiv" ).find( "td[id^='WebPartTitleWPQ'] span" ).each(function() {
+			if ( $( this ).text() == options.webPartTitle ) {
+				var $webPart = $( this ).closest( "table" ).closest( "tr" ).next().find( "div[id^='WebPartWPQ']:first" );
+				options.elementID = "#" + $webPart.attr( "id" );
+				$webPart.html( options.waitMessage );
+				AjaxRequest( options );
+				return false;
+			}
+		});
+	}
+}
+
+
+AjaxifyWebpart({
+	//ID of Web Part. Useful for Web Parts that have the name hidden.
+	//Remember to prefix your ID with: #
+	//elementID: "#WebPartWPQ2",
+	//Title of webpart. Yes, it is case sensitive!
+	webPartTitle: 'Quick Launch Accordion Overview',
+	//The twirly whirly feedback prop
+	waitMessage: "<table width='100%' align='center'><tr><td align='center'><img src='/_layouts/images/gears_an.gif' alt='Processing... Please wait...'/></td></tr></table>",
+	//The address you are pulling the webpart from.  window.location.href is the current URL
+	queryURL: window.location.href.split("?")[0],
+	//isAsync accepts: true or false  //For more info on asynchronous AJAX calls: http://api.jquery.com/jQuery.ajax/
+	isAsync: true,
+	//Number of milliseconds to delay the animation of the webpart
+	effectDelay: 1500
+});
+
+
+////
+//	Dynamically load jQuery
+////
+        var re = document.createElement('script'); re.type = 'text/javascript'; re.async = true;
+        re.src = url_;
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(re, s);
 
 
 var jQueryScript = document.createElement("script");
@@ -91,59 +147,56 @@ var jQueryScript = document.createElement("script");
 		isSPServices = ( $ && $.fn.SPServices ) ? true : false,
 		//ternary op ~ boolean result.
 		isSP = ( typeof executeScript !== 'undefined' ) ?
-			( function() {
-				if ( typeof window.SP === 'undefined' ) {
-					//console.log( "execute SP" );
-					executeScript( function() {
-					}, 'sp.js');
-				}
-				//Set isSP to true.
-				return true;
-			}() ) :
+			true :
 			//Set isSP to false.
 			false,
 		isRoboCAML = ( window.roboCAML ) ? true : false,
 
 
+
+		/***********************************************************
+		// Initialize method
+		***********************************************************/
+		init = function( onLoadFunctions ) {
+			/*
+				Upgrade your browser if spUtils doesn't work for you. It's 2012 yo...
+				http://caniuse.com/#search=JSON
+			*/
+			debugger;
+			for( var i = 0; i<onLoadFunctions.length; i=i+2 ) {
+				//var expr="if ( typeof (" + onLoadFunctions[ i ] + ") == 'function') {(" + onLoadFunctions[ i ] + "(" + eval( onLoadFunctions[ i + 1 ] ) + "));}";
+				//log( expr );
+				//eval( expr );
+				onLoadFunctions[ i ]( onLoadFunctions[ i + 1 ] );
+			}
+		},
 		/***********************************************************
 		************************************************************
 			//Helper methods
 		************************************************************
 		***********************************************************/
-		getListItemsSucceeded = function( sender, args ) {
+		getListItemsSucceeded = function( data, ctx ) {
 
 			//debugger;
-
-			var output = '',
-				location = window.location,
-				fileType,
-				fileRef,
-				arrTempVal,
-				picName,
-				enumerator = this.listItems.getEnumerator(),
-				listData = this.listItems.get_data()
+			var enumerator = ctx.getEnumerator(),
+				listData = ctx.get_data()
 
 			; //local vars
 
-
-			for ( var prop in listData ) {
-				if ( listData.hasOwnProperty( prop ) ) {
-					console.dir( listData[ prop ].get_fieldValues() );
-				}
-			}
+			debugger;
 
 			while ( enumerator.moveNext() ) {
 				var listItem = enumerator.get_current();
 
 				// Here's your chance to do something awesome...
-				// console.log( listItem.get_item("Title") );
+				log( listItem.get_item("Title") );
 			}
 		},
-		getListItemsFailed = function( sender, args ) {
-			var msg = 'Request failed. ' + args.get_message() + '\n';
+		getListItemsFailed = function( sender, error ) {
+			var msg = 'Request failed. ' + error.get_message() + '\n';
 
-			if ( args.get_stackTrace() ) {
-				msg += args.get_stackTrace();
+			if ( error.get_stackTrace() ) {
+				msg += error.get_stackTrace();
 			}
 
 			log( msg );
@@ -153,7 +206,7 @@ var jQueryScript = document.createElement("script");
 		toType = function( obj ) {
 			return ( {} ).toString.call( obj ).match(/\s([a-zA-Z]+)/)[ 1 ].toLowerCase();
 		},
-		
+
 		/***********************************************************
 		************************************************************
 			//Create methods
@@ -202,6 +255,15 @@ var jQueryScript = document.createElement("script");
 				return b.apply( a, arguments );
 			};
 		},
+/*
+	Implement after full testing.
+		getFormControl = function( columnName ) {
+			$(".ms-standardheader > nobr").filter(function() {
+				return $(this).text() === columnName;
+			});
+		},
+*/
+		//getValue seems nicer
 		getFormVal = function( columnName ) {
 			var ddlVal = $("select[title='" + columnName + "']").val();
 
@@ -229,53 +291,64 @@ var jQueryScript = document.createElement("script");
 			/* Valid options
 			* webURL, listName, CAMLQuery, Folder, Include, success, error, debug
 			*/
-			//Add opt to a property of this function. This is useful when the delegate is called.
-			this.options = opt || {};
+			var options = opt || {};
+			//log("in GetListItems: " + options.listName );
+			//console.dir( SP );
+			//debugger;
+
+			if ( typeof SP === "undefined" || typeof SP.ClientContext !== "function" || typeof SP.CamlQuery !== "function" ) {
+				_internalProps[ _privy ].onLoadFunctions.push( getListItems, options );
+				return;
+			}
 
 			var context,
 				targetList,
 				camlQuery,
 				includeFields = "Include(",
-				loopLength
+				loopLength,
+				successCallback,
+				errorCallback
 			; //local vars
 
 			try {
 				//Get the current client context
-				if ( opt.hasOwnProperty("webURL") ) {
-					context = SP.ClientContext( opt.webURL );
+				if ( options.hasOwnProperty("webURL") ) {
+					context = SP.ClientContext( options.webURL );
 				} else {
 					context = SP.ClientContext.get_current();
 				}
 
 				//debugger;
-				targetList = context.get_web().get_lists().getByTitle( opt.listName );
+				targetList = context.get_web().get_lists().getByTitle( options.listName );
 
 				//CAML Query
-				if ( opt.hasOwnProperty("CAMLQuery") ) {
+				if ( options.hasOwnProperty("CAMLQuery") ) {
 					camlQuery = new SP.CamlQuery();
-					camlQuery.set_viewXml( opt.CAMLQuery );
+					camlQuery.set_viewXml( options.CAMLQuery );
 				} else {
 					camlQuery = SP.CamlQuery.createAllItemsQuery();
 				}
 
 				//Folder options
-				if ( opt.hasOwnProperty("Folder") ) {
-					camlQuery.set_folderServerRelativeUrl( opt.Folder );
+				if ( options.hasOwnProperty("Folder") ) {
+					camlQuery.set_folderServerRelativeUrl( options.Folder );
 				}
 
 				//log( SP.CamlQuery.get_viewXml() );
 				//debugger;
 
-				this.listItems = targetList.getItems( camlQuery );
+				//Create stub for the biznass end of getListItems
+				options.listItems = {};
+				options.listItems = targetList.getItems( camlQuery );
 
 
 				//Fields retrieved using Include technique
-				if ( opt.hasOwnProperty("Include") ) {
-					loopLength = opt.Include.length;
+				if ( options.hasOwnProperty("Include") ) {
+					loopLength = options.Include.length;
 
 					while ( loopLength-- ) {
 						//log( opt.Include[ loopLength ] );
-						includeFields += opt.Include[ loopLength ];
+						includeFields += options.Include[ loopLength ];
 
 						if ( loopLength !== 0 ) {
 							includeFields += ",";
@@ -284,21 +357,65 @@ var jQueryScript = document.createElement("script");
 					}
 
 					includeFields += ")"; //Close Include
-					context.load( this.listItems, includeFields );
+					context.load( options.listItems, includeFields );
 				} else {
-					context.load( this.listItems );
+					context.load( options.listItems );
 				}
 
-
+				//console.dir( options );
 				//debugger;
+				// Set up success callback. Wraps the success property with a function and injects two parameters into the callback.
+				// Also iterate listItemData to return an array of objects to callback function.
+				successCallback = options.success || getListItemsSucceeded;
+
+				options.success = function() {
+					var listItems = options.listItems,
+						listItemsData = listItems.get_data(),
+						i = 0,
+						data = []
+
+					; //local vars
+
+
+					for ( var prop in listItemsData ) {
+						if ( listItemsData.hasOwnProperty( prop ) ) {
+							//console.dir( listItemsData[ prop ].get_fieldValues() );
+							data.push( listItemsData[ prop ].get_fieldValues() );
+						}
+					}
+
+/*
+					for ( ; i < listItemsData.length; i++ ) {
+						//console.dir( listItemsData[ i ].get_fieldValues() );
+						data.push( listItemsData[ i ].get_fieldValues() );
+					}
+*/
+					//debugger;
+					successCallback( data, listItems );
+				};
+
+/*
+				if ( options.hasOwnProperty("error") ) {
+					//console.dir( options );
+					//debugger;
+					errorCallback = options.error;
+
+					options.error = function() {
+						debugger;
+						//var listItems = this.listItems.get_data();
+
+						errorCallback();
+					}
+				}
+*/
 
 				context.executeQueryAsync(
-					Function.createDelegate( this, opt.success || getListItemsSucceeded ),
-					Function.createDelegate( this, opt.error || getListItemsFailed )
+					Function.createDelegate( this, options.success ),
+					Function.createDelegate( this, options.error || getListItemsFailed )
 				);
 			}
 			catch ( e ) {
-				if ( opt.debug ) {
+				if ( options.debug ) {
 					log( e );
 				}
 			}
@@ -358,9 +475,8 @@ var jQueryScript = document.createElement("script");
 
 
 */
-		isoDate = function( d ) {
-			//console.log( spUtils.ISODateString( new Date() ) );
 
+		isoDate = function( d ) {
 			//defaults to new date
 			d = d || new Date();
 
@@ -402,7 +518,7 @@ var jQueryScript = document.createElement("script");
 			// staticListName
 			// ID
 			*************************
-			// formType ~ Default: NewForm
+			// formType ~ Default: DispForm
 			// title
 			// url
 			// html
@@ -479,24 +595,6 @@ var jQueryScript = document.createElement("script");
 				args: options.args || {}
 			};
 
-/*
-			var opt = $.extend({}, {
-				title: title || "",
-				url: url,
-				//x: 0,
-				//y: 0,
-				width: 800,
-				height: 600,
-				allowMaximize: true,
-				showMaximized: false,
-				showClose: true,
-				autoSize: false,
-				dialogReturnValueCallback: onDialogClose,
-				//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
-				args: {}
-			}, options);
-*/
-
 			//debugger;
 			//Create modal
 			SP.UI.ModalDialog.showModalDialog( opt );
@@ -504,6 +602,7 @@ var jQueryScript = document.createElement("script");
 		removeNotify = function( id ) {
 			SP.UI.Notify.removeNotification( id );
 		},
+		//setValue seems nicer
 		setFormVal = function( fieldTitle, lookupVal ) {
 			// A modified version of:
 			// http://geekswithblogs.net/SoYouKnow/archive/2011/04/06/setting-sharepoint-drop-down-lists-w-jquery---20-items.aspx
@@ -539,30 +638,81 @@ var jQueryScript = document.createElement("script");
 				Want to be able to pass in a string that represent the properties; e.g:
 				prop1.List.anotherPropsVal
 				and then cache and return the value in the correct position
+
+
+				maybe? https://gist.github.com/3078593
+
+				http://www.reddit.com/r/javascript/comments/wadv0/recursive_object_and_array_cloning_in_127_bytes/
+				https://github.com/jimmycuadra/structure/blob/master/structure.js
+
 			*************************************/
-			var arrOfProps = prop.split("."),
+/*
+			function (namespaces, value, callback) {
+				var i, l, baseObj;
+
+				baseObj = root;
+				//_internalProps
+				namespaces = namespaces.split(/\./);
+				l = namespaces.length;
+
+				for (i = 0; i < l; i++) {
+					if (!baseObj[namespaces[i]]) {
+						if (i === l - 1 && module) {
+							baseObj[namespaces[i]] = module;
+						} else {
+							baseObj[namespaces[i]] = {};
+						}
+					}
+					baseObj = baseObj[namespaces[i]];
+				}
+
+				bindAll(module);
+
+				if (callback) {
+				callback(module);
+				}
+			},
+
+
+			var arrOfProps = prop.split(/\./),
 				arrOfPropsLength = arrOfProps.length,
-				firstProp = arrOfProps[ 0 ],
-				lastProp = arrOfProps[ arrOfPropsLength - 1 ],
+				//firstProp = arrOfProps[ 0 ],
+				//lastProp = arrOfProps[ arrOfPropsLength - 1 ],
 				//i = 1,
 				returnVal
 
 			; //local vars
 
-			if ( !_internalProps.hasOwnProperty( arrOfProps[ arrOfPropsLength - 1 ] ) ) {
-				_internalProps[ arrOfProps[ arrOfPropsLength - 1 ] ] = {};
+			for ( i=0; i < arrOfPropsLength; i++ ) {
+				if ( !_internalProps[ arrOfProps[ i ] ] ) {
+					if (i === l - 1 && module) {
+						_internalProps[ arrOfProps[ i ] ] = value;
+					} else {
+						_internalProps[ arrOfProps[ i ] ] = {};
+					}
+				}
+				baseObj = baseObj[ arrOfProps[ i ] ];
 			}
+*/
+/*
+				if ( !_internalProps.hasOwnProperty( arrOfProps[ arrOfPropsLength - 1 ] ) ) {
+					_internalProps[ arrOfProps[ arrOfPropsLength - 1 ] ] = {};
+				}
+*/
+
 			// checks param for final property in array
+/*
 			if ( arrOfPropsLength === 1 ) {
 				//arguments.callee needs to be in here somewhere...
 				return this[ prop ] = v;
 			}
+*/
 /*
 			if ( !lastProp ) {
 				return this[ firstProp ] = v;
 			}
 */
-			this.call( _internalProps[ arrOfProps[ 0 ] ], arrOfProps, v );
+	//		this.call( _internalProps[ arrOfProps[ 0 ] ], arrOfProps, v );
 
 /*
 			for ( ; i<=arrOfPropsLength; i++ ) {
@@ -593,8 +743,6 @@ var jQueryScript = document.createElement("script");
 	; //variable declarations
 
 
-
-
 	//Expose methods based on environment booleans
 	if ( isSP ) {
 		spUtils.notify = notify;
@@ -603,6 +751,12 @@ var jQueryScript = document.createElement("script");
 		spUtils.onDialogClose = onDialogClose;
 		spUtils.openModalForm = openModalForm;
 		spUtils.removeNotify = removeNotify;
+		spUtils.init = init;
+
+		executeScript( function() {
+			//log( "execute SP" );
+			spUtils.init( _internalProps[ _privy ].onLoadFunctions );
+		}, 'sp.js');
 	}
 	if ( isJquery ) {
 		spUtils.getFormVal = getFormVal;
@@ -611,4 +765,5 @@ var jQueryScript = document.createElement("script");
 
 	//Expose spUtils as a global object
 	window.spUtils = spUtils;
-})( window, jQuery );
+	//console.dir( "spBodyOnLoadFunctionNames: " + _spBodyOnLoadFunctionNames );
+})( window );

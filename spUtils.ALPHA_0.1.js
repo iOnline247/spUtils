@@ -249,7 +249,7 @@ var jQueryScript = document.createElement("script");
 					var d = [];
 					for ( var i = 0; i < argLength; i++ ) {
 						d[ i ] = arguments[ i ];
-						d[ argLength ]=a;
+						d[ argLength ] = a;
 						return ctx.apply( this, d );
 					}
 				}
@@ -260,6 +260,73 @@ var jQueryScript = document.createElement("script");
 			return function() {
 				return b.apply( a, arguments );
 			};
+		},
+		createListItems = function( opt ) {
+			var options = opt || {};
+	
+                // Get the current context
+                var context = getWebURL( options );
+                var targetList = findList( context, options.listName );
+				var successCallback = options.success || function() {};
+				var errorCallback = options.error || function() {};
+ 
+                // create the ListItemInformation object
+                var listItemInfo = new SP.ListItemCreationInformation();
+ 
+                // add the item to the list
+                var listItem = targetList.addItem( listItemInfo );
+ 
+                // Assign Values for fields
+                listItem.set_item('SalesAchieved', salesachieved);
+                listItem.set_item('Customer', customer);
+                listItem.set_item('Title', description);
+               
+                //Lookup field need to be catered using FieldLookUp value
+                var employeeNameValue = new SP.FieldLookupValue();
+                employeeNameValue.set_lookupId(employeeId);
+                listItem.set_item('EmployeeName', employeeNameValue);
+                               
+ 
+                listItem.update();
+ 
+ 
+                //Make a query call to execute the above statements
+                context.executeQueryAsync(
+					Function.createDelegate( this, successCallback ), 
+					Function.createDelegate( this, errorCallback )
+				);
+		},
+		deleteListItems = function( opt ) {
+			var options = opt || {};
+			
+			if ( cacheSpUtilsCall( deleteListItems, options ) ) {
+				return;
+			}
+			
+			//Get the current client context and list
+			var context = getWebURL( options ),
+				targetList = findList( context, options.listName ),
+				typeOfDeletion = toType( options.id ),
+				i=0,
+				listItem,
+				successCallback = options.success || function() {},
+				errorCallback = options.error || function() {}
+			; //local vars
+
+			if ( toType( options.id === "number" ) ) {
+				listItem = targetList.getItemById( options.id );
+				listItem.deleteObject();			
+			} else {
+				for ( ; i<options.id.length; i++ ) {
+					listItem = targetList.getItemById( options.id[ i ] );
+					listItem.deleteObject();			
+				}
+			}
+		
+			clientContext.executeQueryAsync( 
+				Function.createDelegate( this, successCallback ), 
+				Function.createDelegate( this, errorCallback )
+			);
 		},
 		findList = function( ctx, listName ) {
 			return ctx.get_web().get_lists().getByTitle( listName );
@@ -308,11 +375,18 @@ var jQueryScript = document.createElement("script");
 			//console.dir( SP );
 			//debugger;
 
+			if ( cacheSpUtilsCall( getListItems, options ) ) {
+				return;
+			}
+			
+/*
 			if ( typeof SP === "undefined" || typeof SP.ClientContext !== "function" || typeof SP.CamlQuery !== "function" ) {
 				_internalProps[ _privy ].onLoadFunctions.push( getListItems, options );
 				return;
 			}
-
+*/
+			
+			
 			var context,
 				targetList,
 				camlQuery,
@@ -457,11 +531,11 @@ var jQueryScript = document.createElement("script");
 			return result;
 		},
 		getWebURL = function( options ) {
-		
+
 			if ( options.hasOwnProperty("webURL") ) {
 				return SP.ClientContext( options.webURL );
 			}
-			
+
 			return SP.ClientContext.get_current();
 		},
 
@@ -747,19 +821,69 @@ var jQueryScript = document.createElement("script");
 		},
 		updateListItems = function( opt ) {
 			var options = opt || {};
-			
+
 			if ( cacheSpUtilsCall( updateListItems, options ) ) {
 				return;
 			}
 			
-			var context = getWebURL( options ),
-				targetList = findList( context, opt.listName ),
-				itemToUpdate = targetList.getItemById( options.id )
-			; //local vars
+			//Syntax sugar
+			try {
+				switch ( options.op.toLowerCase() ) {
+					case "delete" :
+						this.deleteListItems( options );
+						return;
+					
+					case "new" :
+					case "create" :
+						this.createListItems( options );
+						return;					
+				}
+			} catch(e) {}
 			
-			itemToUpdate.set_item( 'Title', options.value ); 
-			itemToUpdate.update(); 
-			context.executeQueryAsync(Function.createDelegate( this, function() { debugger; } ), Function.createDelegate( this, function() { debugger; } ) );
+
+			var context = getWebURL( options ),
+				targetList = findList( context, options.listName ),
+				itemToUpdate
+			; //local vars
+
+			//Single item update
+			if ( options.hasOwnProperty("id") ) {
+				var i = 0,
+					item = options.valuePairs[ 0 ]
+
+				; //local vars
+
+				itemToUpdate = targetList.getItemById( options.id );
+
+				//debugger;
+				for ( ; i<item.length; i=i+2 ) {
+					//log( item[ i ], item[ i + 1] );
+					itemToUpdate.set_item( item[ i ], item[ i + 1 ] );
+				}
+			} else {
+				//Multi-update yabbage
+				for ( prop in options.updates ) {
+					if ( options.updates.hasOwnProperty( prop ) ) {
+						var item = options.updates[ prop ],
+							i = 0
+						; //local vars
+						
+						itemToUpdate = targetList.getItemById( prop );
+
+						//debugger;
+						for ( ; i<item.valuePairs.length; i++ ) {
+							//log( item.valuePairs[ i ][ 0 ], item.valuePairs[ i ][ 1 ] );
+							itemToUpdate.set_item( item.valuePairs[ i ][ 0 ], item.valuePairs[ i ][ 1 ] );
+						}
+					}
+				}
+			}
+
+			itemToUpdate.update();
+			
+			var successCallback = options.success || function() {};
+
+			context.executeQueryAsync(Function.createDelegate( this, successCallback ), Function.createDelegate( this, function() { debugger; } ) );
 		},
 		//Global Object
 		spUtils = {
@@ -779,12 +903,13 @@ var jQueryScript = document.createElement("script");
 	if ( isSP ) {
 		spUtils.notify = notify;
 		spUtils.closeDialog = closeDialog;
+		spUtils.deleteListItems = deleteListItems;
 		spUtils.getListItems = getListItems;
 		spUtils.onDialogClose = onDialogClose;
 		spUtils.openModalForm = openModalForm;
 		spUtils.removeNotify = removeNotify;
 		spUtils.updateListItems = updateListItems;
-		
+
 		//Initialize SP function. Removes the need to wrap spUtils with ExecuteOrDelayUntilScriptLoaded
 		spUtils.init = init;
 

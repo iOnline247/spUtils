@@ -175,6 +175,12 @@ var jQueryScript = document.createElement("script");
 			//Helper methods
 		************************************************************
 		***********************************************************/
+		cacheSpUtilsCall = function( cachedFunc, options ) {
+			if ( typeof SP === "undefined" || typeof SP.ClientContext !== "function" || typeof SP.CamlQuery !== "function" ) {
+				_internalProps[ _privy ].onLoadFunctions.push( cachedFunc, options );
+				return true;
+			}
+		},
 		getListItemsSucceeded = function( data, ctx ) {
 
 			//debugger;
@@ -183,7 +189,7 @@ var jQueryScript = document.createElement("script");
 
 			; //local vars
 
-			debugger;
+			//debugger;
 
 			while ( enumerator.moveNext() ) {
 				var listItem = enumerator.get_current();
@@ -193,10 +199,10 @@ var jQueryScript = document.createElement("script");
 			}
 		},
 		getListItemsFailed = function( sender, error ) {
-			var msg = 'Request failed. ' + error.get_message() + '\n';
+			var msg = 'Request failed. ' + error.get_message();
 
 			if ( error.get_stackTrace() ) {
-				msg += error.get_stackTrace();
+				msg += '\n' + error.get_stackTrace();
 			}
 
 			log( msg );
@@ -255,6 +261,9 @@ var jQueryScript = document.createElement("script");
 				return b.apply( a, arguments );
 			};
 		},
+		findList = function( ctx, listName ) {
+			return ctx.get_web().get_lists().getByTitle( listName );
+		},
 /*
 	Implement after full testing.
 		getFormControl = function( columnName ) {
@@ -279,10 +288,13 @@ var jQueryScript = document.createElement("script");
 
 
 		//GetList Op??? Where you @?
-
-
-
-
+/*
+  var clientContext = new SP.ClientContext.get_current();
+    var web = clientContext.get_web();
+    var lists = web.get_lists();
+    clientContext.load(lists);
+    clientContext.executeQueryAsync(Function.createDelegate(this, this.onListsQuerySucceeded), Function.createDelegate(this, this.onListsQueryFailed));
+*/
 
 
 
@@ -312,14 +324,10 @@ var jQueryScript = document.createElement("script");
 
 			try {
 				//Get the current client context
-				if ( options.hasOwnProperty("webURL") ) {
-					context = SP.ClientContext( options.webURL );
-				} else {
-					context = SP.ClientContext.get_current();
-				}
+				context = getWebURL( options );
 
 				//debugger;
-				targetList = context.get_web().get_lists().getByTitle( options.listName );
+				targetList = findList( context, options.listName );
 
 				//CAML Query
 				if ( options.hasOwnProperty("CAMLQuery") ) {
@@ -447,6 +455,14 @@ var jQueryScript = document.createElement("script");
 				result[ decodeURIComponent( m[1] ) ] = decodeURIComponent( m[2] );
 			}
 			return result;
+		},
+		getWebURL = function( options ) {
+		
+			if ( options.hasOwnProperty("webURL") ) {
+				return SP.ClientContext( options.webURL );
+			}
+			
+			return SP.ClientContext.get_current();
 		},
 
 
@@ -729,6 +745,22 @@ var jQueryScript = document.createElement("script");
 */
 
 		},
+		updateListItems = function( opt ) {
+			var options = opt || {};
+			
+			if ( cacheSpUtilsCall( updateListItems, options ) ) {
+				return;
+			}
+			
+			var context = getWebURL( options ),
+				targetList = findList( context, opt.listName ),
+				itemToUpdate = targetList.getItemById( options.id )
+			; //local vars
+			
+			itemToUpdate.set_item( 'Title', options.value ); 
+			itemToUpdate.update(); 
+			context.executeQueryAsync(Function.createDelegate( this, function() { debugger; } ), Function.createDelegate( this, function() { debugger; } ) );
+		},
 		//Global Object
 		spUtils = {
 			//Expose defautl methods
@@ -751,6 +783,9 @@ var jQueryScript = document.createElement("script");
 		spUtils.onDialogClose = onDialogClose;
 		spUtils.openModalForm = openModalForm;
 		spUtils.removeNotify = removeNotify;
+		spUtils.updateListItems = updateListItems;
+		
+		//Initialize SP function. Removes the need to wrap spUtils with ExecuteOrDelayUntilScriptLoaded
 		spUtils.init = init;
 
 		executeScript( function() {

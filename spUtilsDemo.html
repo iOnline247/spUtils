@@ -171,7 +171,31 @@
 		spUtils.updateListItems({
 			listName: "scripts",
 			id: 42,
-			value: "The meaning of life"
+			valuePairs: [ [ "Title", spUtils.isoDate() ] ]
+		});
+
+/***************************************
+	Test 8 ~ updateListItems - Updates 2 items based on ID
+***************************************/
+		spUtils.updateListItems({
+			listName : "scripts",
+			updates : {
+				5 : { // the key is the item ID
+					valuePairs : [ ["Title", spUtils.isoDate()] ]
+				},
+				6 : {
+					valuePairs : [ ["Title", spUtils.isoDate()] ]
+				}
+			}
+		});
+		
+/***************************************
+	Test 9 ~ updateListItems - Delete 1 item ~ a lil syntax sugar
+***************************************/
+		spUtils.updateListItems({
+			listName : "Parent",
+			op: "delete",
+			id: 
 		});
 </script>
 

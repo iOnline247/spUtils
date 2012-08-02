@@ -5,10 +5,11 @@
 <script type="text/javascript">
 	//console.dir(SP);
 	//debugger;
-//	ExecuteOrDelayUntilScriptLoaded( 
-//		function() {
-		//alert("me");
-	
+
+/***************************************
+	Test 1 ~ getListItems - valid list
+***************************************/
+
 			spUtils.getListItems({
 				//webURL: ,
 				listName : "scripts",
@@ -16,43 +17,162 @@
 				//Folder,
 				Include : ["Title", "ID"],
 				success : function( data, ctx ) {
-					
+
 					for ( var i = 0; i < data.length; i++ ) {
 						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
 					}
-	
+
 					//debugger;
 				},
 				error : function( ctx, error ) {
 					debugger;
 				},
 				debug : true
-			});	
-			
+			});
+
+/***************************************
+	Test 2 ~ getListItems - invalid list
+***************************************/
 			spUtils.getListItems({
 				//webURL: ,
-				listName : "pages",
+				listName : "InvalidList",
 				//CAMLQuery,
 				//Folder,
 				Include : ["Title", "ID"],
 				success : function( data, ctx ) {
-					
+
 					for ( var i = 0; i < data.length; i++ ) {
 						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
 					}
-	
+
 					//debugger;
 				},
 				error : function( ctx, error ) {
 					debugger;
 				},
 				debug : true
-			});	
-	
-//		}, 
-//		'sp.js'
-//	);
+			});
 
+
+/***************************************
+	Test 3 ~ getListItems - Wrapped with ExecuteOrDelayUntilScriptLoaded
+***************************************/
+			ExecuteOrDelayUntilScriptLoaded(
+				function() {
+					spUtils.getListItems({
+						//webURL: ,
+						listName : "scripts",
+						//CAMLQuery,
+						//Folder,
+						Include : ["Title", "ID"],
+						success : function( data, ctx ) {
+
+							for ( var i = 0; i < data.length; i++ ) {
+								console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+							}
+
+							//debugger;
+						},
+						error : function( ctx, error ) {
+							debugger;
+						},
+						debug : true
+					});
+				},
+				'sp.js'
+			);
+			
+/***************************************
+	Test 4 ~ getListItems - Wrapped with $(document).ready() & ExecuteOrDelayUntilScriptLoaded
+***************************************/
+		$(document).ready(function() {
+			ExecuteOrDelayUntilScriptLoaded(
+				function() {
+					spUtils.getListItems({
+						//webURL: ,
+						listName : "scripts",
+						//CAMLQuery,
+						//Folder,
+						Include : ["Title", "ID"],
+						success : function( data, ctx ) {
+
+							for ( var i = 0; i < data.length; i++ ) {
+								console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+							}
+
+							//debugger;
+						},
+						error : function( ctx, error ) {
+							debugger;
+						},
+						debug : true
+					});
+				},
+				'sp.js'
+			);	
+		});
+
+/***************************************
+	Test 5 ~ getListItems - Wrapped with ExecuteOrDelayUntilScriptLoaded & $(document).ready()
+***************************************/
+		ExecuteOrDelayUntilScriptLoaded(
+			function() {
+				$(document).ready(function() {
+					spUtils.getListItems({
+						//webURL: ,
+						listName : "scripts",
+						//CAMLQuery,
+						//Folder,
+						Include : ["Title", "ID"],
+						success : function( data, ctx ) {
+
+							for ( var i = 0; i < data.length; i++ ) {
+								console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+							}
+
+							//debugger;
+						},
+						error : function( ctx, error ) {
+							debugger;
+						},
+						debug : true
+					});
+				});
+			},
+			'sp.js'
+		);
+		
+/***************************************
+	Test 6 ~ getListItems - Use ViewFields in CAMLQuery and Include: Should fail
+***************************************/
+			spUtils.getListItems({
+				//webURL: ,
+				listName : "scripts",
+				CAMLQuery : "<View><ViewFields><FieldRef Name='Title' /><FieldRef Name='ID' /></ViewFields><Query><Where><Neq><FieldRef Name='ID' /><Value Type='Counter'>0</Value></Neq></Where></Query></View>",
+				//Folder,
+				Include : ["Title", "ID", "Author"],  //Fails when ViewFields and Include have different columns
+				success : function( data, ctx ) {
+
+					for ( var i = 0; i < data.length; i++ ) {
+						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+					}
+
+					//debugger;
+				},
+				error : function( ctx, error ) {
+					debugger;
+				},
+				debug : true
+			});
+
+/***************************************
+	Test 7 ~ updateListItems - Updates 1 item based on ID
+***************************************/
+		spUtils.updateListItems({
+			listName: "scripts",
+			id: 42,
+			value: "The meaning of life"
+		});
 </script>
 
 <div id="showMe"></div>

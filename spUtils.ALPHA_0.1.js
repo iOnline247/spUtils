@@ -35,9 +35,9 @@
 
 (function( window ) {
 	// Use the correct document accordingly with window argument (sandbox)
-	var document = window.document,
-		navigator = window.navigator,
-		location = window.location,
+	//var document = window.document,
+	//	navigator = window.navigator,
+	var location = window.location,
 		_privy = "_spUtilsUnderscoredForAReason",
 		_internalProps = {}
 	; //local vars
@@ -47,18 +47,6 @@
 		"_spBodyOnLoadFunctionNamesQueued" : false,
 		"onLoadFunctions" : []
 	};
-
-	//map over console if undefined.
-	if ( !window.console ) {
-		console = {
-			dir : function() {},
-			error : function() {},
-			info : function() {},
-			log : function( message ) {
-				alert( message );
-			}
-		};
-	}
 
 	//console.dir( _spBodyOnLoadFunctionNames );
 
@@ -144,25 +132,26 @@ var jQueryScript = document.createElement("script");
 	var executeScript = ExecuteOrDelayUntilScriptLoaded,
 		//Booleans for environment checking
 		isJquery = ( $ || window.jQuery ) ? true : false,
-		isSPServices = ( $ && $.fn.SPServices ) ? true : false,
+		//isSPServices = ( $ && $.fn.SPServices ) ? true : false,
 		//ternary op ~ boolean result.
-		isSP = ( typeof executeScript !== 'undefined' ) ?
+
+		isSP = ( typeof executeScript === 'function' ) ?
 			true :
 			//Set isSP to false.
 			false,
-		isRoboCAML = ( window.roboCAML ) ? true : false,
-
+		//isRoboCAML = ( window.roboCAML ) ? true : false,
 
 
 		/***********************************************************
-		// Initialize method
+		************************************************************
+			Private methods
+		************************************************************
+		***********************************************************/
+		/***********************************************************
+			Initialize method ~ loops through onLoadFunctions array and fires cached spUtils call after sp.js has been loaded.
 		***********************************************************/
 		init = function( onLoadFunctions ) {
-			/*
-				Upgrade your browser if spUtils doesn't work for you. It's 2012 yo...
-				http://caniuse.com/#search=JSON
-			*/
-			debugger;
+			//debugger;
 			for( var i = 0; i<onLoadFunctions.length; i=i+2 ) {
 				//var expr="if ( typeof (" + onLoadFunctions[ i ] + ") == 'function') {(" + onLoadFunctions[ i ] + "(" + eval( onLoadFunctions[ i + 1 ] ) + "));}";
 				//log( expr );
@@ -171,9 +160,7 @@ var jQueryScript = document.createElement("script");
 			}
 		},
 		/***********************************************************
-		************************************************************
-			//Helper methods
-		************************************************************
+			Used to cache spUtil calls until sp.js has been loaded
 		***********************************************************/
 		cacheSpUtilsCall = function( cachedFunc, options ) {
 			if ( typeof SP === "undefined" || typeof SP.ClientContext !== "function" || typeof SP.CamlQuery !== "function" ) {
@@ -198,7 +185,12 @@ var jQueryScript = document.createElement("script");
 				log( listItem.get_item("Title") );
 			}
 		},
-		getListItemsFailed = function( sender, error ) {
+		noop = function() {
+			//Nothing to see here!
+		},
+		spCsomError = function( sender, error ) {
+			//debugger;
+
 			var msg = 'Request failed. ' + error.get_message();
 
 			if ( error.get_stackTrace() ) {
@@ -213,9 +205,10 @@ var jQueryScript = document.createElement("script");
 			return ( {} ).toString.call( obj ).match(/\s([a-zA-Z]+)/)[ 1 ].toLowerCase();
 		},
 
+
 		/***********************************************************
 		************************************************************
-			//Create methods
+			Public methods
 		************************************************************
 		***********************************************************/
 		addStatus = function( message, color ) {
@@ -261,70 +254,105 @@ var jQueryScript = document.createElement("script");
 				return b.apply( a, arguments );
 			};
 		},
-		createListItems = function( opt ) {
-			var options = opt || {};
-	
-                // Get the current context
-                var context = getWebURL( options );
-                var targetList = findList( context, options.listName );
-				var successCallback = options.success || function() {};
-				var errorCallback = options.error || function() {};
- 
-                // create the ListItemInformation object
-                var listItemInfo = new SP.ListItemCreationInformation();
- 
-                // add the item to the list
-                var listItem = targetList.addItem( listItemInfo );
- 
-                // Assign Values for fields
-                listItem.set_item('SalesAchieved', salesachieved);
-                listItem.set_item('Customer', customer);
-                listItem.set_item('Title', description);
-               
-                //Lookup field need to be catered using FieldLookUp value
-                var employeeNameValue = new SP.FieldLookupValue();
-                employeeNameValue.set_lookupId(employeeId);
-                listItem.set_item('EmployeeName', employeeNameValue);
-                               
- 
-                listItem.update();
- 
- 
-                //Make a query call to execute the above statements
-                context.executeQueryAsync(
-					Function.createDelegate( this, successCallback ), 
-					Function.createDelegate( this, errorCallback )
-				);
-		},
-		deleteListItems = function( opt ) {
-			var options = opt || {};
-			
-			if ( cacheSpUtilsCall( deleteListItems, options ) ) {
+		createListItems = function( options ) {
+			var opt = options || {};
+
+			if ( cacheSpUtilsCall( createListItems, opt ) ) {
 				return;
 			}
-			
-			//Get the current client context and list
-			var context = getWebURL( options ),
-				targetList = findList( context, options.listName ),
-				typeOfDeletion = toType( options.id ),
-				i=0,
-				listItem,
-				successCallback = options.success || function() {},
-				errorCallback = options.error || function() {}
+
+				// Get the current context
+			var context = getWebURL( opt ),
+                targetList = findList( context, opt.listName ),
+				successCallback = opt.success || noop,
+				errorCallback = opt.error || spCsomError,
+				//Used to search Static Names that are labeled as lookups.
+				rLookupCheck = /\{L\}/i
+
 			; //local vars
 
-			if ( toType( options.id === "number" ) ) {
-				listItem = targetList.getItemById( options.id );
-				listItem.deleteObject();			
-			} else {
-				for ( ; i<options.id.length; i++ ) {
-					listItem = targetList.getItemById( options.id[ i ] );
-					listItem.deleteObject();			
+
+			//debugger;
+
+
+			for ( var i = 0; i < opt.updates.length; i++ ) {
+				// create the ListItemInformation object
+				var listItemInfo = new SP.ListItemCreationInformation(),
+					// add the item to the list
+					listItem = targetList.addItem( listItemInfo ),
+					itemVals = opt.updates[ i ]
+				; //local vars
+
+				for ( var staticName in itemVals ) {
+					if ( itemVals.hasOwnProperty( staticName ) ) {
+						if ( rLookupCheck.test( staticName ) ) {
+							//Lookup field needs to be catered using FieldLookUp value
+							//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
+							//So we'll just make all lookups use lookupValueContainer
+							var lookupValueContainer = [],
+								// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
+								values = itemVals[ staticName ] + "",
+								values = values.split(";#"),
+								c = 0
+							;
+
+							for ( ; c < values.length; c++ ) {
+								var lookupValue = new SP.FieldLookupValue();
+								lookupValue.set_lookupId( values[ c ] );
+								
+								lookupValueContainer.push( lookupValue );
+							}
+
+							listItem.set_item(
+								//Trim off {L} delimiter
+								staticName.split("{")[ 0 ],
+								lookupValueContainer
+							);
+
+							listItem.update();
+						} else {
+							listItem.set_item( staticName, itemVals[ staticName ] );
+							listItem.update();
+						}
+					}
 				}
 			}
-		
-			clientContext.executeQueryAsync( 
-				Function.createDelegate( this, successCallback ), 
+
+			//Make a query call to execute the above statements
+			context.executeQueryAsync(
+				Function.createDelegate( this, successCallback ),
+				Function.createDelegate( this, errorCallback )
+			);
+		},
+		deleteListItems = function( options ) {
+			var opt = options || {};
+
+			if ( cacheSpUtilsCall( deleteListItems, opt ) ) {
+				return;
+			}
+
+			//Get the current client context and list
+			var context = getWebURL( opt ),
+				targetList = findList( context, opt.listName ),
+				typeOfDeletion = toType( opt.id ),
+				i=0,
+				listItem,
+				successCallback = opt.success || noop,
+				errorCallback = opt.error || spCsomError
+			; //local vars
+
+			if ( typeOfDeletion === "number" ) {
+				listItem = targetList.getItemById( opt.id );
+				listItem.recycle();
+			} else {
+				for ( ; i<opt.id.length; i++ ) {
+					listItem = targetList.getItemById( opt.id[ i ] );
+					listItem.recycle();
+				}
+			}
+
+			context.executeQueryAsync(
+				Function.createDelegate( this, successCallback ),
 				Function.createDelegate( this, errorCallback )
 			);
 		},
@@ -378,15 +406,7 @@ var jQueryScript = document.createElement("script");
 			if ( cacheSpUtilsCall( getListItems, options ) ) {
 				return;
 			}
-			
-/*
-			if ( typeof SP === "undefined" || typeof SP.ClientContext !== "function" || typeof SP.CamlQuery !== "function" ) {
-				_internalProps[ _privy ].onLoadFunctions.push( getListItems, options );
-				return;
-			}
-*/
-			
-			
+
 			var context,
 				targetList,
 				camlQuery,
@@ -446,14 +466,13 @@ var jQueryScript = document.createElement("script");
 
 				//console.dir( options );
 				//debugger;
+				errorCallback = options.error || spCsomError;
 				// Set up success callback. Wraps the success property with a function and injects two parameters into the callback.
 				// Also iterate listItemData to return an array of objects to callback function.
-				successCallback = options.success || getListItemsSucceeded;
-
+				successCallback = options.success || getListItemsSucceeded;			
 				options.success = function() {
 					var listItems = options.listItems,
 						listItemsData = listItems.get_data(),
-						i = 0,
 						data = []
 
 					; //local vars
@@ -466,34 +485,13 @@ var jQueryScript = document.createElement("script");
 						}
 					}
 
-/*
-					for ( ; i < listItemsData.length; i++ ) {
-						//console.dir( listItemsData[ i ].get_fieldValues() );
-						data.push( listItemsData[ i ].get_fieldValues() );
-					}
-*/
 					//debugger;
 					successCallback( data, listItems );
 				};
 
-/*
-				if ( options.hasOwnProperty("error") ) {
-					//console.dir( options );
-					//debugger;
-					errorCallback = options.error;
-
-					options.error = function() {
-						debugger;
-						//var listItems = this.listItems.get_data();
-
-						errorCallback();
-					}
-				}
-*/
-
 				context.executeQueryAsync(
 					Function.createDelegate( this, options.success ),
-					Function.createDelegate( this, options.error || getListItemsFailed )
+					Function.createDelegate( this, errorCallback )
 				);
 			}
 			catch ( e ) {
@@ -526,7 +524,7 @@ var jQueryScript = document.createElement("script");
 				m;
 
 			while ( m = re.exec( queryString ) ) {
-				result[ decodeURIComponent( m[1] ) ] = decodeURIComponent( m[2] );
+				result[ decodeURIComponent( m[ 1 ] ) ] = decodeURIComponent( m[ 2 ] );
 			}
 			return result;
 		},
@@ -583,7 +581,7 @@ var jQueryScript = document.createElement("script");
 			;
 		},
 		log = function( message ) {
-			console.log( message );
+			window.console.log( message );
 		},
 		notify = function( feedback, persistent ) {
 			return SP.UI.Notify.addNotification( feedback, persistent );
@@ -692,6 +690,38 @@ var jQueryScript = document.createElement("script");
 		removeNotify = function( id ) {
 			SP.UI.Notify.removeNotification( id );
 		},
+/*
+		startWorkflow = function( options ) {
+			var opt = options || {};
+
+			//console.dir( targetList.get_workflowAssociations().getByName("Workflow1") );
+
+
+			if ( cacheSpUtilsCall( startWorkflow, options ) ) {
+				return;
+			}
+
+			var context,
+				targetList,
+				camlQuery,
+				includeFields = "Include(",
+				loopLength,
+				successCallback,
+				errorCallback
+			; //local vars
+
+			try {
+				//Get the current client context
+				context = getWebURL( options );
+
+				//debugger;
+				targetList = findList( context, options.listName );
+			}
+			catch( e ) {
+
+			}
+		},
+*/
 		//setValue seems nicer
 		setFormVal = function( fieldTitle, lookupVal ) {
 			// A modified version of:
@@ -708,7 +738,7 @@ var jQueryScript = document.createElement("script");
 			;
 
 			if ( $selectCtrl.html() !== null ) {
-			   $selectCtrl.val( lookupVal );
+				$selectCtrl.val( lookupVal );
 			} else {
 				choices = $inputCtrl.attr("choices");
 				hiddenInput = $inputCtrl.attr("optHid");
@@ -825,21 +855,26 @@ var jQueryScript = document.createElement("script");
 			if ( cacheSpUtilsCall( updateListItems, options ) ) {
 				return;
 			}
-			
+
 			//Syntax sugar
 			try {
 				switch ( options.op.toLowerCase() ) {
 					case "delete" :
-						this.deleteListItems( options );
-						return;
-					
-					case "new" :
+						spUtils.deleteListItems( options );
+						break;
+
 					case "create" :
-						this.createListItems( options );
-						return;					
+					case "new" :
+						spUtils.createListItems( options );
+						break;
 				}
-			} catch(e) {}
-			
+			} catch(e) {
+
+			} finally {
+				if ( options.op ) {
+					return;
+				}
+			}
 
 			var context = getWebURL( options ),
 				targetList = findList( context, options.listName ),
@@ -862,12 +897,12 @@ var jQueryScript = document.createElement("script");
 				}
 			} else {
 				//Multi-update yabbage
-				for ( prop in options.updates ) {
+				for ( var prop in options.updates ) {
 					if ( options.updates.hasOwnProperty( prop ) ) {
 						var item = options.updates[ prop ],
 							i = 0
 						; //local vars
-						
+
 						itemToUpdate = targetList.getItemById( prop );
 
 						//debugger;
@@ -880,10 +915,14 @@ var jQueryScript = document.createElement("script");
 			}
 
 			itemToUpdate.update();
-			
-			var successCallback = options.success || function() {};
 
-			context.executeQueryAsync(Function.createDelegate( this, successCallback ), Function.createDelegate( this, function() { debugger; } ) );
+			var successCallback = options.success || noop;
+
+			//To access list items, similar to callback
+			context.executeQueryAsync(
+				Function.createDelegate( this, successCallback ),
+				Function.createDelegate( this, noop )
+			);
 		},
 		//Global Object
 		spUtils = {
@@ -898,24 +937,36 @@ var jQueryScript = document.createElement("script");
 		}
 	; //variable declarations
 
+	
+	//map over console if undefined.
+	if ( !window.console ) {
+		window.console = {
+			dir : noop,
+			error : noop,
+			info : noop,
+			log : function( message ) {
+				alert( message );
+			}
+		};
+	}
 
 	//Expose methods based on environment booleans
 	if ( isSP ) {
-		spUtils.notify = notify;
+		spUtils.addStatus = addStatus;
 		spUtils.closeDialog = closeDialog;
+		spUtils.createListItems = createListItems;
 		spUtils.deleteListItems = deleteListItems;
 		spUtils.getListItems = getListItems;
+		spUtils.notify = notify;
 		spUtils.onDialogClose = onDialogClose;
 		spUtils.openModalForm = openModalForm;
 		spUtils.removeNotify = removeNotify;
 		spUtils.updateListItems = updateListItems;
 
 		//Initialize SP function. Removes the need to wrap spUtils with ExecuteOrDelayUntilScriptLoaded
-		spUtils.init = init;
-
 		executeScript( function() {
 			//log( "execute SP" );
-			spUtils.init( _internalProps[ _privy ].onLoadFunctions );
+			init( _internalProps[ _privy ].onLoadFunctions );
 		}, 'sp.js');
 	}
 	if ( isJquery ) {

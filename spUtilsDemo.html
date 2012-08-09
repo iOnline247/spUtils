@@ -12,14 +12,15 @@
 
 			spUtils.getListItems({
 				//webURL: ,
-				listName : "scripts",
-				//CAMLQuery,
+				listName : "Project Tasks",
+				CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='RelatedIssues' LookupId='True' /><Value Type='Counter'>3</Value></Eq></Where></Query></View>",
 				//Folder,
-				Include : ["Title", "ID"],
+				Include : ["Title", "RelatedIssues", "ID"],
 				success : function( data, ctx ) {
 
+					debugger;
 					for ( var i = 0; i < data.length; i++ ) {
-						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+						console.log( "RelatedIssues: " + data[ i ].RelatedIssues + "\n" + "ID: " + data[ i ].ID );
 					}
 
 					//debugger;
@@ -81,7 +82,7 @@
 				},
 				'sp.js'
 			);
-			
+
 /***************************************
 	Test 4 ~ getListItems - Wrapped with $(document).ready() & ExecuteOrDelayUntilScriptLoaded
 ***************************************/
@@ -109,7 +110,7 @@
 					});
 				},
 				'sp.js'
-			);	
+			);
 		});
 
 /***************************************
@@ -141,7 +142,7 @@
 			},
 			'sp.js'
 		);
-		
+
 /***************************************
 	Test 6 ~ getListItems - Use ViewFields in CAMLQuery and Include: Should fail
 ***************************************/
@@ -188,29 +189,88 @@
 				}
 			}
 		});
+
+/***************************************
+	Test 9 ~ createListItems - Create an item
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					Status: "Resolved",
+					"RelatedProject{L}" : 1,
+					Title: "Created by moi"
+				}
+			],
+			success: function() { debugger; }
+		});
+		
+/***************************************
+	Test 10 ~ createListItems - Create 2 items
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					Status: "Resolved",
+					"RelatedProject{L}" : 1,
+					Title: "Created in multitudes"
+				},
+				{
+					Status: "Closed", //Choice
+					"RelatedProject{L}" : 2, //Lookup, notice the suffix delimiter
+					Title: "Created for us by us",
+					Priority: "(1) High", //Choice
+					V3Comments: "Saying something <b>important</b> here makes you feel <i>important!</i>", //Rich Text
+					"RelatedIssues{L}": "3;#4" //MultiLookup, notice the ;# delimiter
+				}
+			],
+			success: function() { debugger; }
+		});	
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		
 /***************************************
 	Test 9 ~ updateListItems - Delete 1 item ~ a lil syntax sugar
 ***************************************/
 		spUtils.updateListItems({
-			listName : "Parent",
+			listName : "Project Tasks",
 			op: "delete",
-			id: 
+			id: 1,
+			success: function() { debugger; }
 		});
-		
-		
-		
+
+
+/***************************************
+	Test 10 ~ updateListItems - Delete multiple items ~ a lil syntax sugar
+***************************************/
+		spUtils.updateListItems({
+			listName : "Project Tasks",
+			op: "delete",
+			id: [ 3, 4, 6, 8 ], // If item doesn't exist, an error will be thrown. The items processed prior to the error will still be modified accordingly.
+			success: function() { debugger; }
+		});
 		
 /*******************************************
 TO DO ITEMS
-1. Create item w/ lookup 
-2. Update item w/ lookup
-3. Test syntax sugar for creates/deletes
+1. Test syntax sugar for creates
+2. Create test for deletes.
+2. Add create folder method
+3. Add folderUrl options to updateListItems and createListItems.
+4. Get startWorkflow working
 ********************************************/
-		
-		
-		
-		
+
+
+
+
 </script>
 
 <div id="showMe"></div>

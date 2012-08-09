@@ -4,7 +4,7 @@
  *
  * Open source under the MIT license
  *
- * Copyright (c) 2011-2012, Matthew Bramer
+ * Copyright (c) 2011-2012, Matthew Bramer ~ http://about.me/iOnline247
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

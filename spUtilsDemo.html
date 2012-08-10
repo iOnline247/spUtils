@@ -13,7 +13,7 @@
 			spUtils.getListItems({
 				//webURL: ,
 				listName : "Project Tasks",
-				CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='RelatedIssues' LookupId='True' /><Value Type='Counter'>3</Value></Eq></Where></Query></View>",
+				CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='ID' /><Value Type='Counter'>59</Value></Eq></Where></Query></View>",
 				//Folder,
 				Include : ["Title", "RelatedIssues", "ID"],
 				success : function( data, ctx ) {
@@ -228,18 +228,66 @@
 			success: function() { debugger; }
 		});	
 
-		
-		
-		
-		
-		
-		
-		
-		
-		
+/***************************************
+	Test 11 ~ updateListItems - Create an item ~ sytax sugar
+***************************************/
+		spUtils.updateListItems({
+			op: "create",
+			listName : "Project Tasks",
+			updates: [
+				{
+					Status: "Resolved",
+					"RelatedProject{L}" : 2,
+					Title: "Created on" + spUtils.isoDate()
+				}
+			],
+			success: function() { debugger; }
+		});
 		
 /***************************************
-	Test 9 ~ updateListItems - Delete 1 item ~ a lil syntax sugar
+	Test 12 ~ updateListItems - Create 2 items ~ syntax sugar
+***************************************/
+		spUtils.updateListItems({
+			op: "create",
+			listName : "Project Tasks",
+			updates: [
+				{
+					Status: "Resolved",
+					"RelatedProject{L}" : 1,
+					Title: "Created in multitudes"
+				},
+				{
+					Status: "Closed", //Choice
+					"RelatedProject{L}" : 2, //Lookup, notice the suffix delimiter
+					Title: "Created for us by us",
+					Priority: "(1) High", //Choice
+					V3Comments: "Saying something <b>important</b> here makes you feel <i>important!</i>", //Rich Text
+					"RelatedIssues{L}": "3;#14" //MultiLookup, notice the ;# delimiter
+				}
+			],
+			success: function() { debugger; }
+		});	
+		
+/***************************************
+	Test 13 ~ deleteListItems - Delete 1 item
+***************************************/
+		spUtils.deleteListItems({
+			listName : "Project Tasks",
+			id: 12,
+			success: function() { debugger; }
+		});
+	
+/***************************************
+	Test 14 ~ deleteListItems - Delete multiple items
+***************************************/
+		spUtils.deleteListItems({
+			listName : "Project Tasks",
+			id: [ 23, 24, 26, 28 ], // If item doesn't exist, an error will be thrown. The items processed prior to the error will still be modified accordingly.
+			success: function() { debugger; }
+		});
+		
+/***************************************
+	Test 15 ~ updateListItems - Delete 1 item ~ a lil syntax sugar
 ***************************************/
 		spUtils.updateListItems({
 			listName : "Project Tasks",
@@ -248,9 +296,8 @@
 			success: function() { debugger; }
 		});
 
-
 /***************************************
-	Test 10 ~ updateListItems - Delete multiple items ~ a lil syntax sugar
+	Test 16 ~ updateListItems - Delete multiple items ~ a lil syntax sugar
 ***************************************/
 		spUtils.updateListItems({
 			listName : "Project Tasks",
@@ -259,13 +306,46 @@
 			success: function() { debugger; }
 		});
 		
+		
+/***************************************
+	Test 17 ~ createListItems - Create folder and modify leaf name
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					folderUrl: "/SPDev/Lists/ListName",
+					folderName: "folderName"
+				}
+			],
+			success: function() { debugger; }
+		});	
+		
+/***************************************
+	Test 18 ~ createListItems - Create folder, modify leaf name, and metadata.
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					folderUrl: "/SPDev/Lists/ProjectTasks",
+					folderName: "folderName",
+					multiLinesHTML: "Saying something <b>important</b> here makes you feel <i>important!</i>", //Rich Text
+					personGroup: "dev\administrator",
+					chkBox: true,
+					EventAddress: "Event addy",
+					URL: "http://google.com, Google"
+				}
+			],
+			success: function() { debugger; }
+		});	
 /*******************************************
 TO DO ITEMS
-1. Test syntax sugar for creates
-2. Create test for deletes.
-2. Add create folder method
-3. Add folderUrl options to updateListItems and createListItems.
+1. Handle content types with create/update
+2. Add folderUrl options to updateListItems
+3. Create tests for all other methods 
 4. Get startWorkflow working
+5. Implement debug option for all CRUD options
 ********************************************/
 
 

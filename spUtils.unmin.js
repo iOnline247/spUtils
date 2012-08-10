@@ -135,17 +135,14 @@ var jQueryScript = document.createElement("script");
 		//isSPServices = ( $ && $.fn.SPServices ) ? true : false,
 		//ternary op ~ boolean result.
 
-		isSP = ( typeof executeScript === 'function' ) ?
-			true :
-			//Set isSP to false.
-			false,
+		isSP = ( typeof executeScript === 'function' ) ? true : false,
 		//isRoboCAML = ( window.roboCAML ) ? true : false,
 
 
 		/***********************************************************
-		************************************************************
-			Private methods
-		************************************************************
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			~~~~~~~~~~Private methods~~~~~~~~~~~~~~
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		***********************************************************/
 		/***********************************************************
 			Initialize method ~ loops through onLoadFunctions array and fires cached spUtils call after sp.js has been loaded.
@@ -207,9 +204,9 @@ var jQueryScript = document.createElement("script");
 
 
 		/***********************************************************
-		************************************************************
-			Public methods
-		************************************************************
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			~~~~~~~~~~~Public methods~~~~~~~~~~~~~
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		***********************************************************/
 		addStatus = function( message, color ) {
 			var statusId = SP.UI.Status.addStatus( message );
@@ -219,16 +216,6 @@ var jQueryScript = document.createElement("script");
 			}
 
 			return statusId;
-
-
-/*
-			window.setTimeout(
-				function() {
-					SP.UI.Status.removeStatus( statusId );
-				},
-				7500
-			);
-*/
 		},
 		closeDialog = function( result ) {
 			// SP.UI.DialogResult.OK
@@ -708,6 +695,16 @@ var jQueryScript = document.createElement("script");
 		},
 		removeNotify = function( id ) {
 			SP.UI.Notify.removeNotification( id );
+		},
+		removeStatus = function( statusId, ms ) {
+			ms = ms || 100;
+			
+			window.setTimeout(
+				function() {
+					SP.UI.Status.removeStatus( statusId );
+				},
+				ms
+			);	
 		},
 /*
 		startWorkflow = function( options ) {

@@ -259,7 +259,7 @@ var jQueryScript = document.createElement("script");
 			; //local vars
 
 
-			// debugger;
+			debugger;
 
 
 			for ( var i = 0; i < opt.updates.length; i++ ) {
@@ -280,9 +280,16 @@ var jQueryScript = document.createElement("script");
 				// http://msdn.microsoft.com/en-us/library/ee548300
 				// http://spservices.codeplex.com/discussions/79668 <--- a golden oldie
 				if ( itemVals.hasOwnProperty("folderName") ) {
-					listItemInfo.set_leafName( itemVals.folderName );
-					itemVals.FSObjType = 1;
-					itemVals.BaseName = itemVals.folderName;
+					//Handles discrepencies when folder is based off a content type. You Are Welcome...
+					if ( itemVals.hasOwnProperty("ContentTypeId") ) {
+						listItemInfo.set_underlyingObjectType( SP.FileSystemObjectType.folder );
+					} else {
+						itemVals.FSObjType = 1;
+						//itemVals.BaseName = itemVals.folderName;
+					}
+					
+					listItemInfo.set_leafName( itemVals.folderName );	
+					
 					delete itemVals.folderName;
 				}
 				

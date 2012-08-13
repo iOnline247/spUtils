@@ -329,16 +329,34 @@
 			updates: [
 				{
 					folderUrl: "/SPDev/Lists/ProjectTasks",
-					folderName: "folderName",
+					folderName: "folder1",
 					multiLinesHTML: "Saying something <b>important</b> here makes you feel <i>important!</i>", //Rich Text
-					personGroup: "dev\administrator",
-					chkBox: true,
-					EventAddress: "Event addy",
+					//personGroup: "dev\administrator",
+					chkBox: false,
+					ol_EventAddress: "Event addy",
+					ContentTypeId : "0x012000C77A544EBDFBD2419EE2F54FDAE1A9A200936BBDFC53359E4681BF0F0DC7DD3AE7", //FolderSorter CT Name
 					URL: "http://google.com, Google"
 				}
 			],
 			success: function() { debugger; }
 		});	
+
+		
+/***************************************
+	Test 19 ~ createListItems - Create item based on CT.
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					ContentTypeId : "0x01040004B13BF0D61E0D44A7D0327C51C01D8A", //Announcements CT
+					Title: "It's my title and I'll type it when I want to."
+				}
+			],
+			success: function() { debugger; }
+		});		
+		
+		
 /*******************************************
 TO DO ITEMS
 1. Handle content types with create/update

@@ -1,5 +1,5 @@
 <script type="text/javascript" src="/SPDev/scripts/roboCAML.js"></script>
-<script type="text/javascript" src="/SPDev/scripts/spUtils.ALPHA_0.1.js"></script>
+<script type="text/javascript" src="/SPDev/scripts/spUtils.unmin.js"></script>
 
 
 <script type="text/javascript">
@@ -356,7 +356,48 @@
 			success: function() { debugger; }
 		});		
 		
+/***************************************
+	Test 20 ~ addStatus - Create a status notification
+***************************************/
+	spUtils.addStatus("Does <span style='color:red;'>HTML</span> work in a status?", "yellow");		
+
+/***************************************
+	Test 21 ~ addStatus/removeStatus - Create a status notification, then remove it.
+***************************************/
+	var myStatus = spUtils.addStatus("Does <span style='color:red;'>HTML</span> work in a status?", "green");		
+
+	spUtils.removeStatus( myStatus );
 		
+		
+/***************************************
+	Test 22 ~ createListItems - Create item with people picker value.
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					"AssignedTo{P}" : "DEV\Administrator",
+					Title: "Single Person/Group"
+				}
+			],
+			success: function() { debugger; }
+		});		
+		
+/***************************************
+	Test 23 ~ createListItems - Create item with multiple people picker values.
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					folderName: "folder2People",
+					ContentTypeId : "0x012000C77A544EBDFBD2419EE2F54FDAE1A9A200936BBDFC53359E4681BF0F0DC7DD3AE7",
+					"personGroup{P}" : "DEV\\Administrator;#DEV\\SPUser1;#4",  //Will handle mixture of user IDs or the name of the user. Groups do not need domain prefix from what I can tell. User names need two slashes however. That may suck.
+					Title: "Multiple People/Groups"
+				}
+			],
+			success: function() { debugger; }
+		});		
 /*******************************************
 TO DO ITEMS
 1. Handle content types with create/update

@@ -62,7 +62,7 @@
 				function() {
 					spUtils.getListItems({
 						//webURL: ,
-						listName : "scripts",
+						listName : "Project Tasks",
 						//CAMLQuery,
 						//Folder,
 						Include : ["Title", "ID"],
@@ -91,7 +91,7 @@
 				function() {
 					spUtils.getListItems({
 						//webURL: ,
-						listName : "scripts",
+						listName : "Project Tasks",
 						//CAMLQuery,
 						//Folder,
 						Include : ["Title", "ID"],
@@ -121,7 +121,7 @@
 				$(document).ready(function() {
 					spUtils.getListItems({
 						//webURL: ,
-						listName : "scripts",
+						listName : "Project Tasks",
 						//CAMLQuery,
 						//Folder,
 						Include : ["Title", "ID"],
@@ -148,7 +148,7 @@
 ***************************************/
 			spUtils.getListItems({
 				//webURL: ,
-				listName : "scripts",
+				listName : "Project Tasks",
 				CAMLQuery : "<View><ViewFields><FieldRef Name='Title' /><FieldRef Name='ID' /></ViewFields><Query><Where><Neq><FieldRef Name='ID' /><Value Type='Counter'>0</Value></Neq></Where></Query></View>",
 				//Folder,
 				Include : ["Title", "ID", "Author"],  //Fails when ViewFields and Include have different columns
@@ -170,7 +170,7 @@
 	Test 7 ~ updateListItems - Updates 1 item based on ID
 ***************************************/
 		spUtils.updateListItems({
-			listName: "scripts",
+			listName: "Project Tasks",
 			id: 42,
 			valuePairs: [ [ "Title", spUtils.isoDate() ] ]
 		});
@@ -179,7 +179,7 @@
 	Test 8 ~ updateListItems - Updates 2 items based on ID
 ***************************************/
 		spUtils.updateListItems({
-			listName : "scripts",
+			listName : "Project Tasks",
 			updates : {
 				5 : { // the key is the item ID
 					valuePairs : [ ["Title", spUtils.isoDate()] ]
@@ -197,16 +197,51 @@
 			listName : "Project Tasks",
 			updates: [
 				{
-					Status: "Resolved",
+					valuePairs : [ [ "Priority", "(1) High"], [ "RelatedProject{L}", 1 ], [ "Title", "Created by moi" ] ]
+				}
+			],
+			success: function() { debugger; }
+		});
+
+/***************************************
+	DEPRECATED ~ Test 9a ~ createListItems - Create an item
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					Status : "Resolved",
 					"RelatedProject{L}" : 1,
 					Title: "Created by moi"
 				}
 			],
 			success: function() { debugger; }
 		});
-		
+
 /***************************************
 	Test 10 ~ createListItems - Create 2 items
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					valuePairs : [ [ "Priority", "(2) Normal"], [ "RelatedProject{L}", 2 ], [ "Title", spUtils.isoDate() ] ]
+				},
+				{
+					valuePairs : [
+						[ "Priority", "(1) High" ],
+						[ "RelatedProject{L}" /*Lookup, notice the suffix delimiter */, 1 ],
+						[ "Title",  "Created for us by us" ],
+						[ "V3Comments", "Saying something <b>important</b> here makes you feel <i>important!</i>"],
+						[ "RelatedIssues{L}", "3;#4" /*MultiLookup, notice the ;# delimiter*/]
+					]
+				}
+			],
+			success: function() { debugger; }
+		});
+
+/***************************************
+	DEPRECATED ~ Test 10a ~ createListItems - Create 2 items
 ***************************************/
 		spUtils.createListItems({
 			listName : "Project Tasks",
@@ -226,7 +261,7 @@
 				}
 			],
 			success: function() { debugger; }
-		});	
+		});
 
 /***************************************
 	Test 11 ~ updateListItems - Create an item ~ sytax sugar
@@ -243,7 +278,7 @@
 			],
 			success: function() { debugger; }
 		});
-		
+
 /***************************************
 	Test 12 ~ updateListItems - Create 2 items ~ syntax sugar
 ***************************************/
@@ -266,8 +301,8 @@
 				}
 			],
 			success: function() { debugger; }
-		});	
-		
+		});
+
 /***************************************
 	Test 13 ~ deleteListItems - Delete 1 item
 ***************************************/
@@ -276,7 +311,7 @@
 			id: 12,
 			success: function() { debugger; }
 		});
-	
+
 /***************************************
 	Test 14 ~ deleteListItems - Delete multiple items
 ***************************************/
@@ -285,7 +320,7 @@
 			id: [ 23, 24, 26, 28 ], // If item doesn't exist, an error will be thrown. The items processed prior to the error will still be modified accordingly.
 			success: function() { debugger; }
 		});
-		
+
 /***************************************
 	Test 15 ~ updateListItems - Delete 1 item ~ a lil syntax sugar
 ***************************************/
@@ -305,8 +340,8 @@
 			id: [ 3, 4, 6, 8 ], // If item doesn't exist, an error will be thrown. The items processed prior to the error will still be modified accordingly.
 			success: function() { debugger; }
 		});
-		
-		
+
+
 /***************************************
 	Test 17 ~ createListItems - Create folder and modify leaf name
 ***************************************/
@@ -319,8 +354,8 @@
 				}
 			],
 			success: function() { debugger; }
-		});	
-		
+		});
+
 /***************************************
 	Test 18 ~ createListItems - Create folder, modify leaf name, and metadata.
 ***************************************/
@@ -339,9 +374,9 @@
 				}
 			],
 			success: function() { debugger; }
-		});	
+		});
 
-		
+
 /***************************************
 	Test 19 ~ createListItems - Create item based on CT.
 ***************************************/
@@ -354,21 +389,23 @@
 				}
 			],
 			success: function() { debugger; }
-		});		
-		
+		});
+
 /***************************************
 	Test 20 ~ addStatus - Create a status notification
 ***************************************/
-	spUtils.addStatus("Does <span style='color:red;'>HTML</span> work in a status?", "yellow");		
+	spUtils.addStatus("Does <span style='color:red;'>HTML</span> work in a status?", "yellow");
 
 /***************************************
 	Test 21 ~ addStatus/removeStatus - Create a status notification, then remove it.
 ***************************************/
-	var myStatus = spUtils.addStatus("Does <span style='color:red;'>HTML</span> work in a status?", "green");		
+/*
+	var myStatus = spUtils.addStatus("Does <span style='color:red;'>HTML</span> work in a status?", "green"); The return id is async, so you'll need to use the callback method in order to time the removal correctly depending on how long your status needs to stay.
+*/
+	spUtils.addStatus("Does <span style='color:red;'>HTML</span> work in a status?", "green", function( statusId ) {
+		spUtils.removeStatus( statusId, 2000 );
+	});
 
-	spUtils.removeStatus( myStatus );
-		
-		
 /***************************************
 	Test 22 ~ createListItems - Create item with people picker value.
 ***************************************/
@@ -381,8 +418,8 @@
 				}
 			],
 			success: function() { debugger; }
-		});		
-		
+		});
+
 /***************************************
 	Test 23 ~ createListItems - Create item with multiple people picker values.
 ***************************************/
@@ -397,12 +434,62 @@
 				}
 			],
 			success: function() { debugger; }
-		});		
+		});
+
+/***************************************
+	Test 24 ~ updateListItems - Updates 1 item based on ID, nested inside folder. Should work exactly as test#7
+***************************************/
+		spUtils.updateListItems({
+			listName: "Project Tasks",
+			id: 3,
+			valuePairs: [ [ "Title", spUtils.isoDate() ], ["Priority", "(1) High" ] ],
+			success: function() { debugger; }
+		});
+
+/***************************************
+	Test 25 ~ updateListItems - Updates 2 items based on ID, nested inside folder. Should work exactly as test#8
+***************************************/
+		spUtils.updateListItems({
+			listName : "Project Tasks",
+			updates : {
+				3 : { // the key is the item ID
+					valuePairs : [ [ "Title", spUtils.isoDate() ], [ "Priority", "(2) Normal" ] ]
+				},
+				111 : { // the key is the item ID
+					valuePairs : [ [ "Title", spUtils.isoDate() ] ]
+				},
+				112 : {
+					valuePairs : [ [ "Title", spUtils.isoDate() ] ]
+				}
+			},
+			success : function() { debugger; }
+		});
+
+/***************************************
+	Test 26 ~ updateListItems - Updates item's lookup and people picker column
+***************************************/
+		spUtils.updateListItems({
+			listName : "Project Tasks",
+			updates : {
+				111 : { // the key is the item ID
+					valuePairs : [ ["RelatedProject{L}", spUtils.isoDate()], [ "AssignedTo{P}", 1] ]
+				}
+			},
+			success : function() { debugger; }
+		});
+
+		
+/***************************************
+	Test 27 ~ openModal
+***************************************/	
+	spUtils.openModal({
+		formType: "New",
+		staticListName: "ProjectTasks"
+	});
 /*******************************************
 TO DO ITEMS
-1. Handle content types with create/update
-2. Add folderUrl options to updateListItems
-3. Create tests for all other methods 
+
+3. Create tests for all other methods
 4. Get startWorkflow working
 5. Implement debug option for all CRUD options
 ********************************************/

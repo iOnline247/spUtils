@@ -202,19 +202,91 @@ var jQueryScript = document.createElement("script");
 		toType = function( obj ) {
 			return ( {} ).toString.call( obj ).match(/\s([a-zA-Z]+)/)[ 1 ].toLowerCase();
 		},
+		setColumnVal = function( staticName, itemValue, listItem ) {
+			var result = false
+				//Used to search Static Names that are labeled as lookups.
+				rLookupCheck = /\{L\}/i,
+				//Used to search Static Names that are labeled as people pickers.
+				rPeoplePicker = /\{P\}/i
+			; //local vars
+
+			if ( rLookupCheck.test( staticName ) ) {
+				//Lookup field needs to be catered using FieldLookUp value
+				//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
+				//So we'll just make all lookups use lookupValueContainer
+				var lookupValueContainer = [],
+					// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
+					values = itemValue + "",
+					values = values.split(";#"),
+					c = 0
+				;
+
+				for ( ; c < values.length; c++ ) {
+					var lookupValue = new SP.FieldLookupValue();
+					lookupValue.set_lookupId( values[ c ] );
+
+					lookupValueContainer.push( lookupValue );
+				}
+
+				listItem.set_item(
+					//Trim off {*} delimiter
+					staticName.split("{")[ 0 ],
+					lookupValueContainer
+				);
+
+			} else if ( rPeoplePicker.test( staticName ) ) {
+				//http://msdn.microsoft.com/en-us/library/ee658862 ---> for name(s)
+				//http://msdn.microsoft.com/en-us/library/ee549608 ---> for Id(s)
+				//People picker field needs to be catered using SP.FieldUserValue.
+				//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
+				//So we'll just make all lookups use lookupValueContainer
+				var lookupValueContainer = [],
+					// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
+					values = itemValue + "",
+					values = values.split(";#"),
+					c = 0
+				;
+
+				for ( ; c < values.length; c++ ) {
+					var lookupValue
+					; //local vars
+
+					if ( isNaN( values[ c ] * 1 ) ) {
+						// Is string and needs to be set using this method.
+						lookupValue = SP.FieldUserValue.fromUser( values[ c ] );
+					} else {
+						// Is number/string lookupId whatev... Use this method yo.
+						lookupValue = new SP.FieldUserValue();
+
+						lookupValue.set_lookupId( values[ c ] );
+					}
+					lookupValueContainer.push( lookupValue );
+				}
+
+				listItem.set_item(
+					//Trim off {*} delimiter
+					staticName.split("{")[ 0 ],
+					lookupValueContainer
+				);
+
+			} else {
+				listItem.set_item( staticName, itemValue );
+			}
+		},
 		/***********************************************************
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			~~~~~~~~~~~Public methods~~~~~~~~~~~~~
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		***********************************************************/
-		addStatus = function( message, color ) {
+		addStatus = function( message, color, callback ) {
 			var opt;
 
 			// Look to refactor this using .apply() or .call() on cacheSpUtilsCall
 			if ( toType( message ) !== "object" ) {
 				opt = {
-					message: message,
-					color: color
+					message : message,
+					color : color,
+					callback : callback
 				};
 			} else {
 				opt = message;
@@ -231,7 +303,11 @@ var jQueryScript = document.createElement("script");
 				SP.UI.Status.setStatusPriColor( statusId, opt.color );
 			}
 
-			return statusId;
+			if ( toType( opt.callback ) === "function" ) {
+				opt.callback( statusId );
+			} else {
+				return statusId;
+			}
 		},
 		closeDialog = function( result ) {
 			// SP.UI.DialogResult.OK
@@ -268,10 +344,7 @@ var jQueryScript = document.createElement("script");
 			var context = getWebURL( opt ),
                 targetList = findList( context, opt.listName ),
 				successCallback = opt.success || noop,
-				errorCallback = opt.error || spCsomError,
-				//Used to search Static Names that are labeled as lookups.
-				rLookupCheck = /\{L\}/i,
-				rPeoplePicker = /\{P\}/i
+				errorCallback = opt.error || spCsomError
 
 			; //local vars
 
@@ -313,73 +386,9 @@ var jQueryScript = document.createElement("script");
 				// add the item to the list
 				listItem = targetList.addItem( listItemInfo );
 
-				for ( var staticName in itemVals ) {
-					if ( itemVals.hasOwnProperty( staticName ) ) {
-						if ( rLookupCheck.test( staticName ) ) {
-							//Lookup field needs to be catered using FieldLookUp value
-							//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
-							//So we'll just make all lookups use lookupValueContainer
-							var lookupValueContainer = [],
-								// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
-								values = itemVals[ staticName ] + "",
-								values = values.split(";#"),
-								c = 0
-							;
-
-							for ( ; c < values.length; c++ ) {
-								var lookupValue = new SP.FieldLookupValue();
-								lookupValue.set_lookupId( values[ c ] );
-
-								lookupValueContainer.push( lookupValue );
-							}
-
-							listItem.set_item(
-								//Trim off {*} delimiter
-								staticName.split("{")[ 0 ],
-								lookupValueContainer
-							);
-
-						} else if ( rPeoplePicker.test( staticName ) ) {
-							//http://msdn.microsoft.com/en-us/library/ee658862 ---> for name(s)
-							//http://msdn.microsoft.com/en-us/library/ee549608 ---> for Id(s)
-							//People picker field needs to be catered using SP.FieldUserValue.
-							//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
-							//So we'll just make all lookups use lookupValueContainer
-							var lookupValueContainer = [],
-								// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
-								values = itemVals[ staticName ] + "",
-								values = values.split(";#"),
-								c = 0
-							;
-
-							for ( ; c < values.length; c++ ) {
-								var lookupValue
-								; //local vars
-
-								if (  isNaN( values[ c ] * 1 ) ) {
-									// Is string and needs to be set using this method.
-									lookupValue = SP.FieldUserValue.fromUser( values[ c ] );							
-								} else {
-									// Is number/string lookupId whatev... Use this method yo.
-									lookupValue = new SP.FieldUserValue();
-									
-									lookupValue.set_lookupId( values[ c ] );					
-								}
-								lookupValueContainer.push( lookupValue );
-							}
-
-							listItem.set_item(
-								//Trim off {*} delimiter
-								staticName.split("{")[ 0 ],
-								lookupValueContainer
-							);
-
-						} else {
-							listItem.set_item( staticName, itemVals[ staticName ] );
-						}
-
-						listItem.update();
-					}
+				for ( var c = 0; c<itemVals.valuePairs.length; c++ ) {
+					setColumnVal( itemVals.valuePairs[ c ][ 0 ], itemVals.valuePairs[ c ][ 1 ], listItem );
+					listItem.update();
 				}
 			}
 
@@ -660,16 +669,16 @@ var jQueryScript = document.createElement("script");
 
 			return SP.UI.Notify.addNotification( opt.feedback, opt.persistent );
 		},
-		onDialogClose = function( dialogResult, returnValue, message ) {
+		onModalClose = function( dialogResult, returnValue, message ) {
 			var feedback = ( dialogResult ) ?
 				message || "This item has been saved..." :
-				message || "Operation was cancelled..."
+				message || "The modal window has been closed. Nothing has been modified..."
 			;
 			//alert("dialog result: " + dialogResult );
 			spUtils.closeDialog( dialogResult );
 			spUtils.notify( feedback, false );
 		},
-		openModalForm = function( options ) {
+		openModal = function( options ) {
 			/**************************************************************************************************************
 			// Why so many options M$? /smh
 			// http://msdn.microsoft.com/en-us/library/ff410259
@@ -692,7 +701,7 @@ var jQueryScript = document.createElement("script");
 			// showMaximized: false ~ Default.
 			// showClose: true ~ Default.
 			// autoSize: false ~ Default.
-			// callback: onDialogClose ~ Default.
+			// callback: onModalClose ~ Default.
 
 			********************************************************************
 			Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
@@ -703,7 +712,7 @@ var jQueryScript = document.createElement("script");
 			// Safeguard the options param
 			options = options || {};
 
-			if ( cacheSpUtilsCall( openModalForm, options ) ) {
+			if ( cacheSpUtilsCall( openModal, options ) ) {
 				return;
 			}
 			//url will find current site for each scenario
@@ -722,7 +731,7 @@ var jQueryScript = document.createElement("script");
 				//deletes property to prevent overwriting when extending options
 				delete options.url;
 			} else {
-				switch ( formType.toLowerCase() ) {
+				switch ( options.formType.toLowerCase() ) {
 					case "display":
 						formType = "DispForm";
 						break;
@@ -756,7 +765,7 @@ var jQueryScript = document.createElement("script");
 				showMaximized: options.showMaximized || false,
 				showClose: options.showClose || true,
 				autoSize: options.autoSize || false,
-				dialogReturnValueCallback: options.callback || onDialogClose,
+				dialogReturnValueCallback: options.callback || onModalClose,
 				//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
 				args: options.args || {}
 			};
@@ -972,16 +981,19 @@ var jQueryScript = document.createElement("script");
 			//Single item update
 			if ( opt.hasOwnProperty("id") ) {
 				var i = 0,
-					item = opt.valuePairs[ 0 ]
+					item = opt.valuePairs
 
 				; //local vars
 
 				itemToUpdate = targetList.getItemById( opt.id );
 
 				//debugger;
-				for ( ; i<item.length; i=i+2 ) {
+				for ( ; i<item.length; i++ ) {
 					//log( item[ i ], item[ i + 1] );
-					itemToUpdate.set_item( item[ i ], item[ i + 1 ] );
+					setColumnVal( item[ i ][ 0 ], item[ i ][ 1 ], itemToUpdate );
+
+					//Leave this here Matt!!!!! Leave it alone.... I said DO NOT TOUCH!
+					itemToUpdate.update();
 				}
 			} else {
 				//Multi-update yabbage
@@ -996,20 +1008,20 @@ var jQueryScript = document.createElement("script");
 						//debugger;
 						for ( ; i<item.valuePairs.length; i++ ) {
 							//log( item.valuePairs[ i ][ 0 ], item.valuePairs[ i ][ 1 ] );
-							itemToUpdate.set_item( item.valuePairs[ i ][ 0 ], item.valuePairs[ i ][ 1 ] );
+							setColumnVal( item.valuePairs[ i ][ 0 ], item.valuePairs[ i ][ 1 ], itemToUpdate );
+
+							//Leave this here Matt!!!!! Leave it alone.... I said DO NOT TOUCH!
+							itemToUpdate.update();
 						}
 					}
 				}
 			}
 
-			itemToUpdate.update();
-
 			var successCallback = options.success || noop;
-
 			//To access list items, similar to callback
 			context.executeQueryAsync(
 				Function.createDelegate( this, successCallback ),
-				Function.createDelegate( this, noop )
+				Function.createDelegate( this, spCsomError )
 			);
 		},
 		//Global Object
@@ -1046,9 +1058,10 @@ var jQueryScript = document.createElement("script");
 		spUtils.deleteListItems = deleteListItems;
 		spUtils.getListItems = getListItems;
 		spUtils.notify = notify;
-		spUtils.onDialogClose = onDialogClose;
-		spUtils.openModalForm = openModalForm;
+		spUtils.onModalClose = onModalClose;
+		spUtils.openModal = openModal;
 		spUtils.removeNotify = removeNotify;
+		spUtils.removeStatus = removeStatus;
 		spUtils.updateListItems = updateListItems;
 
 		//Initialize SP function. Removes the need to wrap spUtils with ExecuteOrDelayUntilScriptLoaded

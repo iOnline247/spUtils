@@ -1,5 +1,5 @@
 /*
- * spUtils - v 1.0
+ * spUtils - v 1.1
  * http://sputils.codeplex.com
  *
  * Open source under the MIT license
@@ -145,7 +145,7 @@ var jQueryScript = document.createElement("script");
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		***********************************************************/
 		/***********************************************************
-			Initialize method ~ loops through onLoadFunctions array and fires cached spUtils call after sp.js has been loaded.
+			Initialize method ~ loops through onLoadFunctions array and fires cached spUtils call(s) after sp.js has been loaded.
 		***********************************************************/
 		init = function( onLoadFunctions ) {
 			//debugger;
@@ -158,6 +158,7 @@ var jQueryScript = document.createElement("script");
 		},
 		/***********************************************************
 			Used to cache spUtil calls until sp.js has been loaded
+			// Look to refactor this using .apply() or .call() on cacheSpUtilsCall
 		***********************************************************/
 		cacheSpUtilsCall = function( cachedFunc, options ) {
 			if ( typeof SP === "undefined" || typeof SP.ClientContext !== "function" || typeof SP.CamlQuery !== "function" ) {
@@ -201,18 +202,33 @@ var jQueryScript = document.createElement("script");
 		toType = function( obj ) {
 			return ( {} ).toString.call( obj ).match(/\s([a-zA-Z]+)/)[ 1 ].toLowerCase();
 		},
-
-
 		/***********************************************************
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			~~~~~~~~~~~Public methods~~~~~~~~~~~~~
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		***********************************************************/
 		addStatus = function( message, color ) {
-			var statusId = SP.UI.Status.addStatus( message );
+			var opt;
 
-			if ( color ) {
-				SP.UI.Status.setStatusPriColor( statusId, color );
+			// Look to refactor this using .apply() or .call() on cacheSpUtilsCall
+			if ( toType( message ) !== "object" ) {
+				opt = {
+					message: message,
+					color: color
+				};
+			} else {
+				opt = message;
+			}
+
+			if ( cacheSpUtilsCall( addStatus, opt ) ) {
+				return;
+			}
+
+			var statusId = SP.UI.Status.addStatus( opt.message );
+
+			// http://msdn.microsoft.com/en-us/library/ff408240.aspx
+			if ( opt.color ) {
+				SP.UI.Status.setStatusPriColor( statusId, opt.color );
 			}
 
 			return statusId;
@@ -254,7 +270,8 @@ var jQueryScript = document.createElement("script");
 				successCallback = opt.success || noop,
 				errorCallback = opt.error || spCsomError,
 				//Used to search Static Names that are labeled as lookups.
-				rLookupCheck = /\{L\}/i
+				rLookupCheck = /\{L\}/i,
+				rPeoplePicker = /\{P\}/i
 
 			; //local vars
 
@@ -268,14 +285,14 @@ var jQueryScript = document.createElement("script");
 					listItem,
 					itemVals = opt.updates[ i ]
 				; //local vars
-				
+
 				// SP.ListItemCreationInformation.set_folderUrl()
 				// http://msdn.microsoft.com/en-us/library/ee548300
 				if ( itemVals.hasOwnProperty("folderUrl") ) {
 					listItemInfo.set_folderUrl( itemVals.folderUrl );
 					delete itemVals.folderUrl;
 				}
-				
+
 				// SP.ListItemCreationInformation.set_folderUrl()
 				// http://msdn.microsoft.com/en-us/library/ee548300
 				// http://spservices.codeplex.com/discussions/79668 <--- a golden oldie
@@ -287,12 +304,12 @@ var jQueryScript = document.createElement("script");
 						itemVals.FSObjType = 1;
 						//itemVals.BaseName = itemVals.folderName;
 					}
-					
-					listItemInfo.set_leafName( itemVals.folderName );	
-					
+
+					listItemInfo.set_leafName( itemVals.folderName );
+
 					delete itemVals.folderName;
 				}
-				
+
 				// add the item to the list
 				listItem = targetList.addItem( listItemInfo );
 
@@ -312,7 +329,7 @@ var jQueryScript = document.createElement("script");
 							for ( ; c < values.length; c++ ) {
 								var lookupValue = new SP.FieldLookupValue();
 								lookupValue.set_lookupId( values[ c ] );
-								
+
 								lookupValueContainer.push( lookupValue );
 							}
 
@@ -322,11 +339,46 @@ var jQueryScript = document.createElement("script");
 								lookupValueContainer
 							);
 
-							listItem.update();
+						} else if ( rPeoplePicker.test( staticName ) ) {
+							//http://msdn.microsoft.com/en-us/library/ee658862 ---> for name(s)
+							//http://msdn.microsoft.com/en-us/library/ee549608 ---> for Id(s)
+							//People picker field needs to be catered using SP.FieldUserValue.
+							//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
+							//So we'll just make all lookups use lookupValueContainer
+							var lookupValueContainer = [],
+								// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
+								values = itemVals[ staticName ] + "",
+								values = values.split(";#"),
+								c = 0
+							;
+
+							for ( ; c < values.length; c++ ) {
+								var lookupValue
+								; //local vars
+
+								if (  isNaN( values[ c ] * 1 ) ) {
+									// Is string and needs to be set using this method.
+									lookupValue = SP.FieldUserValue.fromUser( values[ c ] );							
+								} else {
+									// Is number/string lookupId whatev... Use this method yo.
+									lookupValue = new SP.FieldUserValue();
+									
+									lookupValue.set_lookupId( values[ c ] );					
+								}
+								lookupValueContainer.push( lookupValue );
+							}
+
+							listItem.set_item(
+								//Trim off {*} delimiter
+								staticName.split("{")[ 0 ],
+								lookupValueContainer
+							);
+
 						} else {
 							listItem.set_item( staticName, itemVals[ staticName ] );
-							listItem.update();
 						}
+
+						listItem.update();
 					}
 				}
 			}
@@ -482,7 +534,7 @@ var jQueryScript = document.createElement("script");
 				errorCallback = options.error || spCsomError;
 				// Set up success callback. Wraps the success property with a function and injects two parameters into the callback.
 				// Also iterate listItemData to return an array of objects to callback function.
-				successCallback = options.success || getListItemsSucceeded;			
+				successCallback = options.success || getListItemsSucceeded;
 				options.success = function() {
 					var listItems = options.listItems,
 						listItemsData = listItems.get_data(),
@@ -597,7 +649,16 @@ var jQueryScript = document.createElement("script");
 			window.console.log( message );
 		},
 		notify = function( feedback, persistent ) {
-			return SP.UI.Notify.addNotification( feedback, persistent );
+			var opt = {
+				feedback: feedback,
+				persistent: persistent
+			};
+
+			if ( cacheSpUtilsCall( notify, opt ) ) {
+				return;
+			}
+
+			return SP.UI.Notify.addNotification( opt.feedback, opt.persistent );
 		},
 		onDialogClose = function( dialogResult, returnValue, message ) {
 			var feedback = ( dialogResult ) ?
@@ -641,6 +702,10 @@ var jQueryScript = document.createElement("script");
 
 			// Safeguard the options param
 			options = options || {};
+
+			if ( cacheSpUtilsCall( openModalForm, options ) ) {
+				return;
+			}
 			//url will find current site for each scenario
 			var url,
 				formType
@@ -705,13 +770,13 @@ var jQueryScript = document.createElement("script");
 		},
 		removeStatus = function( statusId, ms ) {
 			ms = ms || 100;
-			
+
 			window.setTimeout(
 				function() {
 					SP.UI.Status.removeStatus( statusId );
 				},
 				ms
-			);	
+			);
 		},
 /*
 		startWorkflow = function( options ) {
@@ -872,46 +937,46 @@ var jQueryScript = document.createElement("script");
 */
 
 		},
-		updateListItems = function( opt ) {
-			var options = opt || {};
+		updateListItems = function( options ) {
+			var opt = options || {};
 
-			if ( cacheSpUtilsCall( updateListItems, options ) ) {
+			if ( cacheSpUtilsCall( updateListItems, opt ) ) {
 				return;
 			}
 
 			//Syntax sugar
 			try {
-				switch ( options.op.toLowerCase() ) {
+				switch ( opt.op.toLowerCase() ) {
 					case "delete" :
-						spUtils.deleteListItems( options );
+						spUtils.deleteListItems( opt );
 						break;
 
 					case "create" :
 					case "new" :
-						spUtils.createListItems( options );
+						spUtils.createListItems( opt );
 						break;
 				}
 			} catch(e) {
 
 			} finally {
-				if ( options.op ) {
+				if ( opt.op ) {
 					return;
 				}
 			}
 
-			var context = getWebURL( options ),
-				targetList = findList( context, options.listName ),
+			var context = getWebURL( opt ),
+				targetList = findList( context, opt.listName ),
 				itemToUpdate
 			; //local vars
 
 			//Single item update
-			if ( options.hasOwnProperty("id") ) {
+			if ( opt.hasOwnProperty("id") ) {
 				var i = 0,
-					item = options.valuePairs[ 0 ]
+					item = opt.valuePairs[ 0 ]
 
 				; //local vars
 
-				itemToUpdate = targetList.getItemById( options.id );
+				itemToUpdate = targetList.getItemById( opt.id );
 
 				//debugger;
 				for ( ; i<item.length; i=i+2 ) {
@@ -920,9 +985,9 @@ var jQueryScript = document.createElement("script");
 				}
 			} else {
 				//Multi-update yabbage
-				for ( var prop in options.updates ) {
-					if ( options.updates.hasOwnProperty( prop ) ) {
-						var item = options.updates[ prop ],
+				for ( var prop in opt.updates ) {
+					if ( opt.updates.hasOwnProperty( prop ) ) {
+						var item = opt.updates[ prop ],
 							i = 0
 						; //local vars
 
@@ -960,7 +1025,7 @@ var jQueryScript = document.createElement("script");
 		}
 	; //variable declarations
 
-	
+
 	//map over console if undefined.
 	if ( !window.console ) {
 		window.console = {

@@ -137,7 +137,8 @@ var jQueryScript = document.createElement("script");
 		//isSPServices = ( $ && $.fn.SPServices ) ? true : false,
 		//ternary op ~ boolean result.
 
-		isSP = ( typeof executeScript === 'function' ) ? true : false,
+		isSP2010 = ( typeof executeScript === 'function' ) ? true : false,
+		isSP2013 = false,
 		//isRoboCAML = ( window.roboCAML ) ? true : false,
 
 		//Used to search Static Names that are labeled as lookups.
@@ -843,38 +844,31 @@ var clientContext = new SP.ClientContext.get_current(),
 				ms
 			);
 		},
-/*
 		startWorkflow = function( options ) {
 			var opt = options || {};
 
-			//console.dir( targetList.get_workflowAssociations().getByName("Workflow1") );
-
-
-			if ( cacheSpUtilsCall( startWorkflow, options ) ) {
+			if ( cacheSpUtilsCall( startWorkflow, opt ) ) {
 				return;
 			}
 
 			var context,
 				targetList,
-				camlQuery,
-				includeFields = "Include(",
-				loopLength,
 				successCallback,
 				errorCallback
 			; //local vars
 
 			try {
 				//Get the current client context
-				context = getWebURL( options.webUrl );
+				context = getWebURL( opt.webUrl );
+				targetList = findList( context, opt.listName );
 
-				//debugger;
-				targetList = findList( context, options.listName );
+				debugger;
+				//console.dir( targetList.get_workflowAssociations().getByName( opt.workflowName ) );
 			}
 			catch( e ) {
 
 			}
 		},
-*/
 		setFormValue = function( options ) {
 			// A modified version of:
 			// http://geekswithblogs.net/SoYouKnow/archive/2011/04/06/setting-sharepoint-drop-down-lists-w-jquery---20-items.aspx
@@ -1299,7 +1293,10 @@ var clientContext = new SP.ClientContext.get_current(),
 	}
 
 	//Expose methods based on environment booleans
-	if ( isSP ) {
+	if ( isSP2013 ) {
+		spUtils.startWorkflow = startWorkflow;
+	}
+	if ( isSP2010 ) {
 		spUtils.addStatus = addStatus;
 		spUtils.closeDialog = closeDialog;
 		spUtils.createListItems = createListItems;

@@ -1,0 +1,56 @@
+<script type="text/javascript" src="/SPDev/scripts/roboCAML.js"></script>
+<script type="text/javascript" src="/SPDev/scripts/spUtils.unmin.js"></script>
+
+
+<script type="text/javascript">
+$(document).ready(function() {
+
+	var $title = spUtils.setFormValue({
+		columnName: "Title",
+		value: "This is a title field!"
+	});
+	
+	var $description = spUtils.setFormValue({
+		columnName: "Description",
+		value: "<b>Something bold!</b> : <i>Something italic!!</i>", //html tags aren't working for some reason...
+		debug: true
+	});
+	
+	var $priority = spUtils.setFormValue({
+		columnName: "Priority",
+		value: "(1) High",
+		debug: true
+	});
+	
+	spUtils.setFormValue({
+		columnName: "Due Date",
+		value: {
+			date: "09/24/2012",
+			hour: "10 pm",
+			minutes: "15"
+		},
+		debug: true
+	});
+	
+	var $multiSelect = spUtils.setFormValue({
+		columnName: "Related Issues",
+		value: ["2012-08-24T19:59:50Z", "Something will happen17"],
+		debug: true
+	});
+	
+	spUtils.setFormValue({
+		columnName: "Assigned To",
+		value: "dev\\Administrator; dev\\spUser",
+		checkNames: false,
+		debug: true
+	});
+	
+	
+	
+	$description.row.hide();
+	debugger;
+	//console.dir( $priority );
+});
+</script>
+
+<div id="showMe"></div>

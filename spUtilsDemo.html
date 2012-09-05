@@ -11,16 +11,25 @@
 ***************************************/
 
 			spUtils.getListItems({
-				//webURL: ,
+				//webUrl: ,
 				listName : "Project Tasks",
-				CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='ID' /><Value Type='Counter'>59</Value></Eq></Where></Query></View>",
+				CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='ID' /><Value Type='Counter'>45</Value></Eq></Where></Query></View>",
 				//Folder,
 				Include : ["Title", "RelatedIssues", "ID"],
 				success : function( data, ctx ) {
 
 					debugger;
 					for ( var i = 0; i < data.length; i++ ) {
-						console.log( "RelatedIssues: " + data[ i ].RelatedIssues + "\n" + "ID: " + data[ i ].ID );
+						var output = "{\n";
+						
+						for ( var staticName in data[ i ] ) {
+							if ( data[ i ].hasOwnProperty( staticName ) ) {
+								output += staticName + " : " + data[ i ][ staticName ] + "\n";
+							}
+						}
+						
+						output += "}";
+						spUtils.log( output );
 					}
 
 					//debugger;
@@ -35,18 +44,25 @@
 	Test 2 ~ getListItems - invalid list
 ***************************************/
 			spUtils.getListItems({
-				//webURL: ,
+				//webUrl: ,
 				listName : "InvalidList",
 				//CAMLQuery,
 				//Folder,
 				Include : ["Title", "ID"],
 				success : function( data, ctx ) {
-
+					debugger;
 					for ( var i = 0; i < data.length; i++ ) {
-						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+						var output = "{\n";
+						
+						for ( var staticName in data[ i ] ) {
+							if ( data[ i ].hasOwnProperty( staticName ) ) {
+								output += staticName + " : " + data[ i ][ staticName ] + "\n";
+							}
+						}
+						
+						output += "}";
+						spUtils.log( output );
 					}
-
-					//debugger;
 				},
 				error : function( ctx, error ) {
 					debugger;
@@ -61,17 +77,25 @@
 			ExecuteOrDelayUntilScriptLoaded(
 				function() {
 					spUtils.getListItems({
-						//webURL: ,
+						//webUrl: ,
 						listName : "Project Tasks",
 						//CAMLQuery,
 						//Folder,
 						Include : ["Title", "ID"],
 						success : function( data, ctx ) {
-
+							debugger;
 							for ( var i = 0; i < data.length; i++ ) {
-								console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+								var output = "{\n";
+								
+								for ( var staticName in data[ i ] ) {
+									if ( data[ i ].hasOwnProperty( staticName ) ) {
+										output += staticName + " : " + data[ i ][ staticName ] + "\n";
+									}
+								}
+								
+								output += "}";
+								spUtils.log( output );
 							}
-
 							//debugger;
 						},
 						error : function( ctx, error ) {
@@ -90,17 +114,25 @@
 			ExecuteOrDelayUntilScriptLoaded(
 				function() {
 					spUtils.getListItems({
-						//webURL: ,
+						//webUrl: ,
 						listName : "Project Tasks",
 						//CAMLQuery,
 						//Folder,
 						Include : ["Title", "ID"],
 						success : function( data, ctx ) {
-
+							debugger;
 							for ( var i = 0; i < data.length; i++ ) {
-								console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+								var output = "{\n";
+								
+								for ( var staticName in data[ i ] ) {
+									if ( data[ i ].hasOwnProperty( staticName ) ) {
+										output += staticName + " : " + data[ i ][ staticName ] + "\n";
+									}
+								}
+								
+								output += "}";
+								spUtils.log( output );
 							}
-
 							//debugger;
 						},
 						error : function( ctx, error ) {
@@ -120,17 +152,26 @@
 			function() {
 				$(document).ready(function() {
 					spUtils.getListItems({
-						//webURL: ,
+						//webUrl: ,
 						listName : "Project Tasks",
 						//CAMLQuery,
 						//Folder,
 						Include : ["Title", "ID"],
 						success : function( data, ctx ) {
 
+							debugger;
 							for ( var i = 0; i < data.length; i++ ) {
-								console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+								var output = "{\n";
+								
+								for ( var staticName in data[ i ] ) {
+									if ( data[ i ].hasOwnProperty( staticName ) ) {
+										output += staticName + " : " + data[ i ][ staticName ] + "\n";
+									}
+								}
+								
+								output += "}";
+								spUtils.log( output );
 							}
-
 							//debugger;
 						},
 						error : function( ctx, error ) {
@@ -147,15 +188,25 @@
 	Test 6 ~ getListItems - Use ViewFields in CAMLQuery and Include: Should fail
 ***************************************/
 			spUtils.getListItems({
-				//webURL: ,
+				//webUrl: ,
 				listName : "Project Tasks",
 				CAMLQuery : "<View><ViewFields><FieldRef Name='Title' /><FieldRef Name='ID' /></ViewFields><Query><Where><Neq><FieldRef Name='ID' /><Value Type='Counter'>0</Value></Neq></Where></Query></View>",
 				//Folder,
 				Include : ["Title", "ID", "Author"],  //Fails when ViewFields and Include have different columns
 				success : function( data, ctx ) {
-
+				
+					debugger;
 					for ( var i = 0; i < data.length; i++ ) {
-						console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+						var output = "{\n";
+						
+						for ( var staticName in data[ i ] ) {
+							if ( data[ i ].hasOwnProperty( staticName ) ) {
+								output += staticName + " : " + data[ i ][ staticName ] + "\n";
+							}
+						}
+						
+						output += "}";
+						spUtils.log( output );
 					}
 
 					//debugger;
@@ -182,29 +233,17 @@
 			listName : "Project Tasks",
 			updates : {
 				5 : { // the key is the item ID
-					valuePairs : [ ["Title", spUtils.isoDate()] ]
+					"Title" : spUtils.isoDate(),
+					"Priority" : "(2) Normal"
 				},
 				6 : {
-					valuePairs : [ ["Title", spUtils.isoDate()] ]
+					"Title", spUtils.isoDate()
 				}
 			}
 		});
 
 /***************************************
 	Test 9 ~ createListItems - Create an item
-***************************************/
-		spUtils.createListItems({
-			listName : "Project Tasks",
-			updates: [
-				{
-					valuePairs : [ [ "Priority", "(1) High"], [ "RelatedProject{L}", 1 ], [ "Title", "Created by moi" ] ]
-				}
-			],
-			success: function() { debugger; }
-		});
-
-/***************************************
-	DEPRECATED ~ Test 9a ~ createListItems - Create an item
 ***************************************/
 		spUtils.createListItems({
 			listName : "Project Tasks",
@@ -219,7 +258,43 @@
 		});
 
 /***************************************
+	DEPRECATED ~ Test 9a ~ createListItems - Create an item
+***************************************/
+		spUtils.createListItems({
+			listName : "Project Tasks",
+			updates: [
+				{
+					valuePairs : [ [ "Priority", "(1) High"], [ "RelatedProject{L}", 1 ], [ "Title", "Created by moi" ] ]
+				}
+			],
+			success: function() { debugger; }
+		});
+
+/***************************************
 	Test 10 ~ createListItems - Create 2 items
+***************************************/
+	spUtils.createListItems({
+		listName : "Project Tasks",
+		updates: [
+			{
+				Priority : "(1) High",
+				"RelatedProject{L}" : 1,
+				Title: "Created in multitudes"
+			},
+			{
+				Priority : "(2) Normal",
+				"RelatedProject{L}" : 2, //Lookup, notice the suffix delimiter
+				Title: "Created for us by us",
+				Priority: "(1) High", //Choice
+				V3Comments: "Saying something <b>important</b> here makes you feel <i>important!</i>", //Rich Text
+				"RelatedIssues{L}": "3;#4" //MultiLookup, notice the ;# delimiter
+			}
+		],
+		success: function() { debugger; }
+	});
+		
+/***************************************
+	DEPRECATED ~ Test 10a ~ createListItems - Create 2 items
 ***************************************/
 		spUtils.createListItems({
 			listName : "Project Tasks",
@@ -239,30 +314,6 @@
 			],
 			success: function() { debugger; }
 		});
-
-/***************************************
-	DEPRECATED ~ Test 10a ~ createListItems - Create 2 items
-***************************************/
-		spUtils.createListItems({
-			listName : "Project Tasks",
-			updates: [
-				{
-					Status: "Resolved",
-					"RelatedProject{L}" : 1,
-					Title: "Created in multitudes"
-				},
-				{
-					Status: "Closed", //Choice
-					"RelatedProject{L}" : 2, //Lookup, notice the suffix delimiter
-					Title: "Created for us by us",
-					Priority: "(1) High", //Choice
-					V3Comments: "Saying something <b>important</b> here makes you feel <i>important!</i>", //Rich Text
-					"RelatedIssues{L}": "3;#4" //MultiLookup, notice the ;# delimiter
-				}
-			],
-			success: function() { debugger; }
-		});
-
 /***************************************
 	Test 11 ~ updateListItems - Create an item ~ sytax sugar
 ***************************************/
@@ -366,7 +417,7 @@
 					folderUrl: "/SPDev/Lists/ProjectTasks",
 					folderName: "folder1",
 					multiLinesHTML: "Saying something <b>important</b> here makes you feel <i>important!</i>", //Rich Text
-					//personGroup: "dev\administrator",
+					//personGroup: "dev\\administrator",
 					chkBox: false,
 					ol_EventAddress: "Event addy",
 					ContentTypeId : "0x012000C77A544EBDFBD2419EE2F54FDAE1A9A200936BBDFC53359E4681BF0F0DC7DD3AE7", //FolderSorter CT Name
@@ -413,7 +464,7 @@
 			listName : "Project Tasks",
 			updates: [
 				{
-					"AssignedTo{P}" : "DEV\Administrator",
+					"AssignedTo{P}" : "DEV\\Administrator",
 					Title: "Single Person/Group"
 				}
 			],
@@ -449,21 +500,24 @@
 /***************************************
 	Test 25 ~ updateListItems - Updates 2 items based on ID, nested inside folder. Should work exactly as test#8
 ***************************************/
-		spUtils.updateListItems({
-			listName : "Project Tasks",
-			updates : {
-				3 : { // the key is the item ID
-					valuePairs : [ [ "Title", spUtils.isoDate() ], [ "Priority", "(2) Normal" ] ]
-				},
-				111 : { // the key is the item ID
-					valuePairs : [ [ "Title", spUtils.isoDate() ] ]
-				},
-				112 : {
-					valuePairs : [ [ "Title", spUtils.isoDate() ] ]
-				}
+	spUtils.updateListItems({
+		listName : "Project Tasks",
+		updates : {
+			3 : { // the key is the item ID
+				"Title" : spUtils.isoDate(),
+				"Priority" : "(2) Normal",
+				"AssignedTo{P}" : "DEV\\Administrator",
+				_x0021__x0040__x0023__x0024__x00 : "weird static names work too. ;-)"
 			},
-			success : function() { debugger; }
-		});
+			4 : { // the key is the item ID
+				"Title" : spUtils.isoDate()
+			},
+			5 : {
+				"Title" : spUtils.isoDate()
+			}
+		},
+		success : function() { debugger; }
+	});
 
 /***************************************
 	Test 26 ~ updateListItems - Updates item's lookup and people picker column
@@ -472,7 +526,8 @@
 			listName : "Project Tasks",
 			updates : {
 				111 : { // the key is the item ID
-					valuePairs : [ ["RelatedProject{L}", spUtils.isoDate()], [ "AssignedTo{P}", 1] ]
+					"RelatedProject{L}" : spUtils.isoDate(), 
+					"AssignedTo{P}" : 1
 				}
 			},
 			success : function() { debugger; }
@@ -482,10 +537,148 @@
 /***************************************
 	Test 27 ~ openModal
 ***************************************/	
+	// Open an OOTB New form from the Project Tasks list
 	spUtils.openModal({
 		formType: "New",
 		staticListName: "ProjectTasks"
 	});
+	
+	// Open an external page in the modal
+	spUtils.openModal({
+		url: "http://iOnline247.me"
+	});
+	
+	// Open the OOTB edit form for id: 42
+	spUtils.openModal({
+		staticListName: "ProjectTasks",
+		formType: "Edit",
+		id: 42
+/*
+		title: options.title || "",
+		url: url,
+		html: options.html || undefined,
+		height: options.height || 600,
+		width: options.width || 800,
+		allowMaximize: options.allowMaximize || true,
+		showMaximized: options.showMaximized || false,
+		showClose: options.showClose || true,
+		autoSize: options.autoSize || false,
+		dialogReturnValueCallback: options.callback || onModalClose,
+		//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
+		args: options.args || {}
+*/
+	});
+	
+
+	// Open custom form 
+	spUtils.openModal({
+		url: "/Site Pages/CustomForm.aspx?ID=42",
+		title: "Mah super awesome custom form",
+		height: 400,
+		width: 700,
+		allowMaximize: false,
+		callback: function( dialogResult, returnValue ) {
+			// Fires when dialog is closed
+			var message = "YaY!!!!, opening a modal is now much easier. <br /><br /> Outcome of dialog = " + dialogResult;
+			
+			spUtils.notify( message, false );
+		},
+		//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs within the form that is being opened.
+		args: {
+			someDiv: $("#someDiv").html(),
+			relatedStuff: $("#itemIds").text().split(";#")
+		}
+	});
+	
+/***************************************
+	Test 28 ~ closeDialog - Closes the most recently opened modal.
+***************************************/
+	spUtils.closeDialog( SP.UI.DialogResult.OK /* SP.UI.DialogResult.OK === 1 */ );
+	spUtils.closeDialog( SP.UI.DialogResult.Cancel /* SP.UI.DialogResult.Cancel === 0 */ );
+	
+/***************************************
+	Test 29 ~ log() - Useful for debugging.
+***************************************/
+	// If console is open, will log there. If not, will fallback to alert();
+	spUtils.log("I just can't do it captain...");
+	
+/***************************************
+	Test 30 ~ notify - Provide feedback to user
+***************************************/
+	spUtils.notify("Isn't this spiffy?", true);
+	/* 
+		First parameter is the message
+		Second parameter is optional and makes the notification persist or not.
+	*/
+	
+/***************************************
+	Test 31 ~ removeNotify - Removes notification. What else would it do? ;-)
+***************************************/
+	var userNotification = spUtils.notify("Isn't this spiffy?", true);
+	
+	setTimeout( function() {
+		spUtils.removeNotify( userNotification );
+	}, 15000);
+	
+/***************************************
+	Test 32 ~ getListItems - Query multiple lists prior to making request to server...
+***************************************/
+	spUtils.getListItems({
+		batch : [
+			{
+				//webUrl: ,
+				listName : "Project Tasks",
+				CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='ID' /><Value Type='Counter'>45</Value></Eq></Where></Query></View>",
+				//Folder,
+				Include : ["Title", "RelatedIssues", "ID"]
+			},
+			{
+				//webUrl: ,
+				listName : "scripts",
+				CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='ID' /><Value Type='Counter'>59</Value></Eq></Where></Query></View>",
+				//Folder,
+				Include : ["Title", "ID"]
+			}
+		],
+		success : function( data, ctx ) {
+				debugger;
+				for ( var i = 0; i < data.length; i++ ) {
+					console.log( "RelatedIssues: " + data[ i ].RelatedIssues + "\n" + "ID: " + data[ i ].ID );
+				}
+
+				//debugger;
+			},
+			error : function( ctx, error ) {
+				debugger;
+			},
+			debug : true
+		});
+			
+			
+/***************************************
+	Test 33 ~ getListItems - From sub site, query root site.
+***************************************/
+	spUtils.getListItems({
+		webUrl: "/",
+		listName : "Style Library",
+		CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='ID' /><Value Type='Counter'>1</Value></Eq></Where></Query></View>",
+		//Folder,
+		Include : ["Name", "Modified", "Editor", "ID"],
+		success : function( data, ctx ) {
+
+			debugger;
+			for ( var i = 0; i < data.length; i++ ) {
+				console.log( "Name: " + data[ i ].Name + "\n" + "ID: " + data[ i ].ID );
+			}
+
+			//debugger;
+		},
+		error : function( ctx, error ) {
+			debugger;
+		},
+		debug : true
+	});
+			
 /*******************************************
 TO DO ITEMS
 
@@ -495,7 +688,46 @@ TO DO ITEMS
 ********************************************/
 
 
+/*******************************************
+	spUtil Examples
+*******************************************/
 
+/******************************************
+	Query List A, create list item in List B
+******************************************/
+	spUtils.getListItems({
+		//webUrl: ,
+		listName : "List A",
+		CAMLQuery: "<View><Query><Where><Eq><FieldRef Name='ID' /><Value Type='Counter'>99</Value></Eq></Where></Query></View>",
+		//Folder,
+		Include : ["Title", "RelatedIssues", "ID"],
+		success : function( data, ctx ) {
+			var updates = [];
+			
+			for ( var i = 0; i < data.length; i++ ) {
+				var options = {
+					valuePairs : []
+				};
+				
+				console.log( "Title: " + data[ i ].Title + "\n" + "ID: " + data[ i ].ID );
+				options.valuePairs.push( [ "Title", data[ i ].Title ] );
+				
+				updates.push( options );
+			}
+			
+			debugger;
+			
+			spUtils.createListItems({
+				listName : "List B",
+				updates: updates,
+				success: function() { debugger; }
+			});
+		},
+		error : function( ctx, error ) {
+			debugger;
+		},
+		debug : true
+	});
 
 </script>
 

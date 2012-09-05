@@ -37,7 +37,8 @@
 	// Use the correct document accordingly with window argument (sandbox)
 	//var document = window.document,
 	//	navigator = window.navigator,
-	var location = window.location,
+	var _spUtils = "spUtils", 
+		location = window.location,
 		_privy = "_spUtilsUnderscoredForAReason",
 		_internalProps = {}
 	; //local vars
@@ -45,7 +46,8 @@
 	_internalProps[ _privy ] = {
 		//Used for internal properties of spUtils
 		"_spBodyOnLoadFunctionNamesQueued" : false,
-		"onLoadFunctions" : []
+		"onLoadFunctions" : [],
+		$formNodes : {}
 	};
 
 	//console.dir( _spBodyOnLoadFunctionNames );
@@ -138,6 +140,10 @@ var jQueryScript = document.createElement("script");
 		isSP = ( typeof executeScript === 'function' ) ? true : false,
 		//isRoboCAML = ( window.roboCAML ) ? true : false,
 
+		//Used to search Static Names that are labeled as lookups.
+		rLookupCheck = /\{L\}/i,
+		//Used to search Static Names that are labeled as people pickers.
+		rPeoplePicker = /\{P\}/i,
 
 		/***********************************************************
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -165,6 +171,16 @@ var jQueryScript = document.createElement("script");
 				_internalProps[ _privy ].onLoadFunctions.push( cachedFunc, options );
 				return true;
 			}
+		},
+		
+		
+		
+		//https://github.com/cowboy/grunt/blob/master/lib/grunt/utils.js#L50
+		
+		
+		
+		findList = function( ctx, listName ) {
+			return ctx.get_web().get_lists().getByTitle( listName );
 		},
 		getListItemsSucceeded = function( data, ctx ) {
 
@@ -204,10 +220,7 @@ var jQueryScript = document.createElement("script");
 		},
 		setColumnVal = function( staticName, itemValue, listItem ) {
 			var result = false
-				//Used to search Static Names that are labeled as lookups.
-				rLookupCheck = /\{L\}/i,
-				//Used to search Static Names that are labeled as people pickers.
-				rPeoplePicker = /\{P\}/i
+
 			; //local vars
 
 			if ( rLookupCheck.test( staticName ) ) {
@@ -215,7 +228,7 @@ var jQueryScript = document.createElement("script");
 				//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
 				//So we'll just make all lookups use lookupValueContainer
 				var lookupValueContainer = [],
-					// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
+					// Coerce into string and then split. Prevents error when one lookup id is passed as a number.
 					values = itemValue + "",
 					values = values.split(";#"),
 					c = 0
@@ -241,7 +254,7 @@ var jQueryScript = document.createElement("script");
 				//Also multiItemLookup fields need to have an array of new SP.FieldLookupValue().
 				//So we'll just make all lookups use lookupValueContainer
 				var lookupValueContainer = [],
-					// Coerce into string and then split. Prevents error when one lookup id is passed as a number primitive.
+					// Coerce into string and then split. Prevents error when one lookup id is passed as a number.
 					values = itemValue + "",
 					values = values.split(";#"),
 					c = 0
@@ -251,15 +264,15 @@ var jQueryScript = document.createElement("script");
 					var lookupValue
 					; //local vars
 
-					if ( isNaN( values[ c ] * 1 ) ) {
+					if ( isNaN( values[ c ] ) ) {
 						// Is string and needs to be set using this method.
 						lookupValue = SP.FieldUserValue.fromUser( values[ c ] );
 					} else {
 						// Is number/string lookupId whatev... Use this method yo.
 						lookupValue = new SP.FieldUserValue();
-
 						lookupValue.set_lookupId( values[ c ] );
 					}
+
 					lookupValueContainer.push( lookupValue );
 				}
 
@@ -341,7 +354,7 @@ var jQueryScript = document.createElement("script");
 			}
 
 			// Get the current context
-			var context = getWebURL( opt ),
+			var context = getWebURL( opt.webUrl ),
                 targetList = findList( context, opt.listName ),
 				successCallback = opt.success || noop,
 				errorCallback = opt.error || spCsomError
@@ -349,13 +362,14 @@ var jQueryScript = document.createElement("script");
 			; //local vars
 
 
-			debugger;
+			//debugger;
 
 
 			for ( var i = 0; i < opt.updates.length; i++ ) {
 				// create the ListItemInformation object
 				var listItemInfo = new SP.ListItemCreationInformation(),
-					listItem,
+					// add the item to the list
+					listItem = targetList.addItem( listItemInfo ),
 					itemVals = opt.updates[ i ]
 				; //local vars
 
@@ -365,7 +379,6 @@ var jQueryScript = document.createElement("script");
 					listItemInfo.set_folderUrl( itemVals.folderUrl );
 					delete itemVals.folderUrl;
 				}
-
 				// SP.ListItemCreationInformation.set_folderUrl()
 				// http://msdn.microsoft.com/en-us/library/ee548300
 				// http://spservices.codeplex.com/discussions/79668 <--- a golden oldie
@@ -373,23 +386,22 @@ var jQueryScript = document.createElement("script");
 					//Handles discrepencies when folder is based off a content type. You Are Welcome...
 					if ( itemVals.hasOwnProperty("ContentTypeId") ) {
 						listItemInfo.set_underlyingObjectType( SP.FileSystemObjectType.folder );
-					} else {
-						itemVals.FSObjType = 1;
-						//itemVals.BaseName = itemVals.folderName;
 					}
 
 					listItemInfo.set_leafName( itemVals.folderName );
-
+					itemVals.FSObjType = 1;
+					itemVals.BaseName = itemVals.folderName;
 					delete itemVals.folderName;
 				}
 
-				// add the item to the list
-				listItem = targetList.addItem( listItemInfo );
-
-				for ( var c = 0; c<itemVals.valuePairs.length; c++ ) {
-					setColumnVal( itemVals.valuePairs[ c ][ 0 ], itemVals.valuePairs[ c ][ 1 ], listItem );
-					listItem.update();
+				//Iterate the rest of the properties and set the column values accordingly.
+				for ( var staticName in itemVals ) {
+					if ( itemVals.hasOwnProperty( staticName ) ) {
+						setColumnVal( staticName, itemVals[ staticName ], listItem );
+					}
 				}
+
+				listItem.update();
 			}
 
 			//Make a query call to execute the above statements
@@ -406,7 +418,7 @@ var jQueryScript = document.createElement("script");
 			}
 
 			//Get the current client context and list
-			var context = getWebURL( opt ),
+			var context = getWebURL( opt.webUrl ),
 				targetList = findList( context, opt.listName ),
 				typeOfDeletion = toType( opt.id ),
 				i=0,
@@ -430,9 +442,7 @@ var jQueryScript = document.createElement("script");
 				Function.createDelegate( this, errorCallback )
 			);
 		},
-		findList = function( ctx, listName ) {
-			return ctx.get_web().get_lists().getByTitle( listName );
-		},
+
 /*
 	Implement after full testing.
 		getFormControl = function( columnName ) {
@@ -458,121 +468,162 @@ var jQueryScript = document.createElement("script");
 
 		//GetList Op??? Where you @?
 /*
-  var clientContext = new SP.ClientContext.get_current();
-    var web = clientContext.get_web();
-    var lists = web.get_lists();
-    clientContext.load(lists);
-    clientContext.executeQueryAsync(Function.createDelegate(this, this.onListsQuerySucceeded), Function.createDelegate(this, this.onListsQueryFailed));
+console.dir( list );
+//console.dir( list.get_fields() );
+//console.dir( list.get_views() );
+//console.dir( list.get_dataSource() );
+//console.dir( list.get_id() );
+/*
+var clientContext = new SP.ClientContext.get_current(),
+	web = clientContext.get_web(),
+   	listCollection = web.get_lists();
+
+//console.dir( listCollection );
+
+
+            clientContext.load(this.listCollection);
+            clientContext.executeQueryAsync(Function.createDelegate(this, this.onQuerySucceeded), Function.createDelegate(this, this.onQueryFailed));
+
+
+    function onQuerySucceeded() {
+	debugger;
+        var listInfo = 'Lists on the current site:' + '\n\n';
+        var listEnumerator = this.listCollection.getEnumerator();
+        while (listEnumerator.moveNext()) {
+            var list = listEnumerator.get_current();
+            listInfo += list.get_title() + '\n';
+        }
+        alert(listInfo);
+    }
+
+    function onQueryFailed(sender, args) {
+        alert('Request failed. ' + args.get_message() + '\n' + args.get_stackTrace());
+    }
+
 */
 
 
 
-
-		getListItems = function( opt ) {
+		getListItems = function( options ) {
 			/* Valid options
-			* webURL, listName, CAMLQuery, Folder, Include, success, error, debug
+			* webUrl, listName, CAMLQuery, Folder, Include, success, error, debug
 			*/
-			var options = opt || {};
+
+/*
+			var opt = ( toType( options ) === "array" ) ?
+				opt = options :
+				Array.prototype.slice.call( arguments ) || {}
+			;
+*/
+			var opt = options || {},
+				context,
+				i = 0
+			;
 			//log("in GetListItems: " + options.listName );
 			//console.dir( SP );
 			//debugger;
 
-			if ( cacheSpUtilsCall( getListItems, options ) ) {
+			if ( "batch" in opt === false ) {
+				opt.batch = [ opt ];
+			}
+
+			if ( cacheSpUtilsCall( getListItems, opt ) ) {
 				return;
 			}
 
-			var context,
-				targetList,
-				camlQuery,
-				includeFields = "Include(",
-				loopLength,
-				successCallback,
-				errorCallback
-			; //local vars
+			//Get the current client context
+			context = getWebURL( opt.webUrl );
 
-			try {
-				//Get the current client context
-				context = getWebURL( options );
+			for( ; i<opt.batch.length; i++ ) {
+				var listOptions = opt.batch[ i ],
+					targetList,
+					camlQuery,
+					includeFields = "Include(",
+					loopLength,
+					successCallback,
+					errorCallback
+				; //local vars
 
-				//debugger;
-				targetList = findList( context, options.listName );
-
-				//CAML Query
-				if ( options.hasOwnProperty("CAMLQuery") ) {
-					camlQuery = new SP.CamlQuery();
-					camlQuery.set_viewXml( options.CAMLQuery );
-				} else {
-					camlQuery = SP.CamlQuery.createAllItemsQuery();
-				}
-
-				//Folder options
-				if ( options.hasOwnProperty("Folder") ) {
-					camlQuery.set_folderServerRelativeUrl( options.Folder );
-				}
-
-				//log( SP.CamlQuery.get_viewXml() );
-				//debugger;
-
-				//Create stub for the biznass end of getListItems
-				options.listItems = {};
-				options.listItems = targetList.getItems( camlQuery );
-
-
-				//Fields retrieved using Include technique
-				if ( options.hasOwnProperty("Include") ) {
-					loopLength = options.Include.length;
-
-					while ( loopLength-- ) {
-						//log( opt.Include[ loopLength ] );
-						includeFields += options.Include[ loopLength ];
-
-						if ( loopLength !== 0 ) {
-							includeFields += ",";
-						}
-						//log( loopLength );
-					}
-
-					includeFields += ")"; //Close Include
-					context.load( options.listItems, includeFields );
-				} else {
-					context.load( options.listItems );
-				}
-
-				//console.dir( options );
-				//debugger;
-				errorCallback = options.error || spCsomError;
-				// Set up success callback. Wraps the success property with a function and injects two parameters into the callback.
-				// Also iterate listItemData to return an array of objects to callback function.
-				successCallback = options.success || getListItemsSucceeded;
-				options.success = function() {
-					var listItems = options.listItems,
-						listItemsData = listItems.get_data(),
-						data = []
-
-					; //local vars
-
-
-					for ( var prop in listItemsData ) {
-						if ( listItemsData.hasOwnProperty( prop ) ) {
-							//console.dir( listItemsData[ prop ].get_fieldValues() );
-							data.push( listItemsData[ prop ].get_fieldValues() );
-						}
-					}
-
+				try {
 					//debugger;
-					successCallback( data, listItems );
-				};
+					targetList = findList( context, listOptions.listName );
 
-				context.executeQueryAsync(
-					Function.createDelegate( this, options.success ),
-					Function.createDelegate( this, errorCallback )
-				);
-			}
-			catch ( e ) {
-				if ( options.debug ) {
-					log( e );
+					//CAML Query
+					if ( listOptions.hasOwnProperty("CAMLQuery") ) {
+						camlQuery = new SP.CamlQuery();
+						camlQuery.set_viewXml( listOptions.CAMLQuery );
+					} else {
+						camlQuery = SP.CamlQuery.createAllItemsQuery();
+					}
+
+					//Folder options
+					if ( listOptions.hasOwnProperty("Folder") ) {
+						camlQuery.set_folderServerRelativeUrl( listOptions.Folder );
+					}
+
+					//log( SP.CamlQuery.get_viewXml() );
+					//debugger;
+
+					//Create stub for the biznass end of getListItems
+					listOptions.listItems = {};
+					listOptions.listItems = targetList.getItems( camlQuery );
+
+
+					//Fields retrieved using Include technique
+					if ( listOptions.hasOwnProperty("Include") ) {
+						loopLength = listOptions.Include.length;
+
+						while ( loopLength-- ) {
+							//log( listOptions.Include[ loopLength ] );
+							includeFields += listOptions.Include[ loopLength ];
+
+							if ( loopLength !== 0 ) {
+								includeFields += ",";
+							}
+							//log( loopLength );
+						}
+
+						includeFields += ")"; //Close Include
+						context.load( listOptions.listItems, includeFields );
+					} else {
+						context.load( listOptions.listItems );
+					}
+				} catch ( e ) {
+					if ( opt.debug ) {
+						log( e );
+					}
 				}
 			}
+			//console.dir( opt );
+			//debugger;
+			errorCallback = opt.error || spCsomError;
+			// Set up success callback. Wraps the success property with a function and injects two parameters into the callback.
+			// Also iterate listItemData to return an array of objects to callback function.
+			successCallback = opt.success || getListItemsSucceeded;
+			opt.success = function() {
+				debugger;
+
+				var listItems = opt.listItems,
+					listItemsData = listItems.get_data(),
+					data = []
+
+				; //local vars
+
+				for ( var prop in listItemsData ) {
+					if ( listItemsData.hasOwnProperty( prop ) ) {
+						//console.dir( listItemsData[ prop ].get_fieldValues() );
+						data.push( listItemsData[ prop ].get_fieldValues() );
+					}
+				}
+
+
+				successCallback( data, listItems );
+			};
+
+			context.executeQueryAsync(
+				Function.createDelegate( this, opt.success ),
+				Function.createDelegate( this, errorCallback )
+			);
 		},
 		getProp = function( prop ) {
 			var arrOfProps = prop.split("."),
@@ -602,16 +653,20 @@ var jQueryScript = document.createElement("script");
 			}
 			return result;
 		},
-		getWebURL = function( options ) {
+		getWebURL = function( webURL ) {
 
-			if ( options.hasOwnProperty("webURL") ) {
-				return SP.ClientContext( options.webURL );
-			}
 
-			return SP.ClientContext.get_current();
+
+		/* WORK IN PROGRESS...
+
+			// Can 2010 actually pull from a different web?
+
+		*/
+
+			return ( webURL ) ?
+				SP.ClientContext( webURL ) :
+				SP.ClientContext.get_current();
 		},
-
-
 
 
 /*
@@ -649,9 +704,9 @@ var jQueryScript = document.createElement("script");
 			return d.getUTCFullYear() + '-' +
 				pad( d.getUTCMonth() +1 ) + '-' +
 				pad( d.getUTCDate() ) + 'T' +
-				pad( d.getUTCHours() ) +':' +
-				pad( d.getUTCMinutes() )+':' +
-				pad( d.getUTCSeconds() )+'Z'
+				pad( d.getUTCHours() ) + ':' +
+				pad( d.getUTCMinutes() )+ ':' +
+				pad( d.getUTCSeconds() )+ 'Z'
 			;
 		},
 		log = function( message ) {
@@ -669,14 +724,15 @@ var jQueryScript = document.createElement("script");
 
 			return SP.UI.Notify.addNotification( opt.feedback, opt.persistent );
 		},
-		onModalClose = function( dialogResult, returnValue, message ) {
-			var feedback = ( dialogResult ) ?
-				message || "This item has been saved..." :
-				message || "The modal window has been closed. Nothing has been modified..."
+		onModalClose = function( dialogResult, returnValue ) {
+			var message = ( dialogResult ) ?
+				"This item has been saved..." :
+				"The modal window has been closed. Nothing has been modified..."
 			;
+
 			//alert("dialog result: " + dialogResult );
 			spUtils.closeDialog( dialogResult );
-			spUtils.notify( feedback, false );
+			spUtils.notify( message, false );
 		},
 		openModal = function( options ) {
 			/**************************************************************************************************************
@@ -687,7 +743,7 @@ var jQueryScript = document.createElement("script");
 			*************************
 			// These options are the bare minimum needed to open a modal dialog.
 			// staticListName
-			// ID
+			// id
 			*************************
 			// formType ~ Default: DispForm
 			// title
@@ -748,9 +804,9 @@ var jQueryScript = document.createElement("script");
 
 				//Default the base URL to the url variable
 				if ( L_Menu_BaseUrl === "" ) {
-					url = "/Lists/" + options.staticListName + "/" + formType + ".aspx?ID=" + options.ID;
+					url = "/Lists/" + options.staticListName + "/" + formType + ".aspx?ID=" + options.id;
 				} else {
-					url = L_Menu_BaseUrl + "/Lists/" + options.staticListName + "/" + formType + ".aspx?ID=" + options.ID;
+					url = L_Menu_BaseUrl + "/Lists/" + options.staticListName + "/" + formType + ".aspx?ID=" + options.id;
 				}
 			}
 
@@ -766,7 +822,7 @@ var jQueryScript = document.createElement("script");
 				showClose: options.showClose || true,
 				autoSize: options.autoSize || false,
 				dialogReturnValueCallback: options.callback || onModalClose,
-				//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs
+				//Use args to pass data to the modal.  Access using: window.frameElement.dialogArgs within the form that is being opened.
 				args: options.args || {}
 			};
 
@@ -809,7 +865,7 @@ var jQueryScript = document.createElement("script");
 
 			try {
 				//Get the current client context
-				context = getWebURL( options );
+				context = getWebURL( options.webUrl );
 
 				//debugger;
 				targetList = findList( context, options.listName );
@@ -819,34 +875,212 @@ var jQueryScript = document.createElement("script");
 			}
 		},
 */
-		//setValue seems nicer
-		setFormVal = function( fieldTitle, lookupVal ) {
+		setFormValue = function( options ) {
 			// A modified version of:
 			// http://geekswithblogs.net/SoYouKnow/archive/2011/04/06/setting-sharepoint-drop-down-lists-w-jquery---20-items.aspx
 			// No more global variables and needless DOM walking.
+			// A modified version of:
+			// http://sympmarc.com/2012/04/22/working-with-sharepoint-people-pickers-with-jquery-a-new-function-called-findpeoplepicker/
 
-			//Set default value for lookups with less that 20 items
-			var $selectCtrl = ("select[title='" + fieldTitle + "']"),
-				$inputCtrl = $("input[title='" + fieldTitle + "']"),
+			var defaults = {
+					value : "",
+					addSelected : true, //Used with multiSelect controls. Automatically adds selections to the right.
+					checkNames: true, //Used with people picker and resolves names.
+					cacheForm : true,
+					debug : false
+				},
+				opt = $.extend({}, defaults, options),
+				$formBody,
+				$columnNode,
+				columnComment,
+				columnType = "",
+				rcolumnName = new RegExp("FieldName=\"" + opt.columnName + "\"", "i"), //This regex has a bug w/ special chars... Will have to investigate.
+				$selectCtrl = $("select[title='" + opt.columnName + "']"),
+				$inputCtrl = $("input[title='" + opt.columnName + "']"),
 				choices,
-				choiceArray,
 				hiddenInput,
-				index
+				choiceArray,
+				index,
+				fieldTypeFound
 			;
 
-			if ( $selectCtrl.html() !== null ) {
-				$selectCtrl.val( lookupVal );
-			} else {
-				choices = $inputCtrl.attr("choices");
-				hiddenInput = $inputCtrl.attr("optHid");
-				$("input[id='" + hiddenInput + "']").attr( "value", lookupVal );
 
-				choiceArray = choices.split("|");
-				for ( index = 1; index < choiceArray.length; index = index + 2 ) {
-					if ( choiceArray[ index ] == lookupVal ) {
-						$inputCtrl.val( choiceArray[ index - 1 ] );
-					}
+			//<!-- FieldName="Title" FieldInternalName="Title" FieldType="SPFieldText" --> ~ Single line text box
+			//<!-- FieldName="Priority" FieldInternalName="Priority" FieldType="SPFieldChoice" --> ~ Choice column
+			//<!-- FieldName="Assigned To" FieldInternalName="AssignedTo" FieldType="SPFieldUser" --> ~ People picker
+			//<!-- FieldName="Description" FieldInternalName="Comment" FieldType="SPFieldNote" --> All multi lines of text
+			//<!-- FieldName="Related Issues" FieldInternalName="RelatedIssues" FieldType="SPFieldLookupMulti" --> MultiLookup
+			//<!-- FieldName="Related Project" FieldInternalName="RelatedProject" FieldType="SPFieldLookup" --> Single Lookup
+			//<!-- FieldName="Due Date" FieldInternalName="DueDate" FieldType="SPFieldDateTime" --> Date/Time
+			if ( !!opt.cacheForm ) {
+				if ( "length" in _internalProps[ _privy ].$formNodes && _internalProps[ _privy ].$formNodes.length > 0 ) {
+					$formBody = _internalProps[ _privy ].$formNodes;
+				} else {
+					$formBody = _internalProps[ _privy ].$formNodes = $("td.ms-formbody");
 				}
+			} else {
+				$formBody = $("td.ms-formbody");
+			}
+			
+			//debugger;
+			
+			try {
+				$columnNode = $formBody.contents()
+					.filter(function() {
+						return this.nodeType === 8 && rcolumnName.test( this.nodeValue );
+					});
+					
+				columnComment = $columnNode[ 0 ].nodeValue.trim();
+				//Need to return SPFieldText or whatever it may be...
+				fieldTypeFound = columnComment.indexOf("FieldType=\"") + 11; //11 is added so the text will start with the "type" of column text.
+
+				while( fieldTypeFound ) {
+					if ( columnComment.charAt( fieldTypeFound ) === "\"" ) {
+						break;
+					}
+					columnType += columnComment.charAt( fieldTypeFound );
+					fieldTypeFound++;
+				}
+
+				switch( columnType.toLowerCase() ) {
+					case "spfieldtext" :
+						$inputCtrl.val( opt.value );
+						
+						return {
+							row : $inputCtrl.closest("tr"),
+							control : $inputCtrl
+						};
+
+					case "spfieldchoice" :
+						$selectCtrl.val( opt.value );
+						
+						return {
+							row : $selectCtrl.closest("tr"),
+							control : $selectCtrl
+						};
+
+					case "spfielduser" :
+						var $row = $columnNode.closest("tr"),
+							$control = $row.find("div[title='People Picker']"),
+							$checkNames = $row.find("img[Title='Check Names']:first")
+						; //local vars
+						
+						if ( opt.value.length > 0 ) {
+							$control.html( opt.value );
+						}
+						
+						if ( opt.checkNames ) {
+							$checkNames.click();
+						}
+
+						return {
+							row : $row,
+							control : $control,
+							checkNames : $checkNames
+						};
+
+					case "spfieldnote" :
+						var $textArea = $("textarea[Title='" + opt.columnName + "']"),
+							$thisRow = $textArea.closest("tr")
+						; //local vars
+						
+						$textArea.val( opt.value );
+
+						return {
+							row : $thisRow,
+							control : $textArea
+						};
+
+					case "spfieldlookupmulti" :
+						var $multiSelectCtrl = $("select[title='" + opt.columnName + " possible values']"),
+							$selectedValues = $("select[title='" + opt.columnName + " selected values']"),
+							$addButton = $multiSelectCtrl.closest("tr").find("button[id$='AddButton']"),
+							$removeButton = $multiSelectCtrl.closest("tr").find("button[id$='RemoveButton']"),
+							optionsToSelect = []
+						; //local vars
+						
+						$multiSelectCtrl.find("option").each(function( i, el ) {
+							var $this = $( this ),
+								optionText = $this.text().substring( $this.text().indexOf(" - ") + 3 )
+							; //local vars
+							
+							// .shift() array values off to save some loops.
+							if ( $.inArray( optionText, opt.value ) > -1 ) {
+								el.selected = true;
+								opt.value.shift();
+							}
+							
+							//Check here to see if array has any other values. If not, save time by dropping the $.each() iteration.
+							if ( opt.value.length === 0 ) {
+								return false;
+							}
+						});
+						
+						if ( opt.addSelected ) {
+							$addButton.click();						
+						}
+
+						return {
+							row : $multiSelectCtrl.closest("span").closest("tr"),
+							possibleValues : $multiSelectCtrl,
+							selectedValues : $selectedValues,
+							addButton : $addButton,
+							removeButton : $removeButton
+						};
+
+					case "spfieldlookup" :
+						var returnObj = {
+							row : null,
+							control: null
+						};
+						
+						if ( $selectCtrl.length ) {
+							$selectCtrl.val( opt.value );
+							
+							returnObj.control = $selectCtrl;
+							returnObj.row = $selectCtrl.closest("tr");
+							
+						} else if ( $inputCtrl.length ) {
+							choices = $inputCtrl.attr("choices");
+							hiddenInput = $inputCtrl.attr("optHid");
+							$("input[id='" + hiddenInput + "']").attr( "value", opt.value );
+
+							choiceArray = choices.split("|");
+							for ( index = 1; index < choiceArray.length; index = index + 2 ) {
+								if ( choiceArray[ index ] == opt.value ) {
+									$inputCtrl.val( choiceArray[ index - 1 ] );
+								}
+							}
+							
+							returnObj.control = $inputCtrl;
+							returnObj.row = $inputCtrl.closest("tr");
+						}
+						
+						return returnObj;
+
+					case "spfielddatetime" :
+						$inputCtrl.val( opt.value.date );
+						$inputCtrl.closest("tr")
+							.find("select[id$='DateTimeFieldDateHours']")
+							.val( opt.value.hour.toUpperCase() );
+						$inputCtrl.closest("tr")
+							.find("select[id$='DateTimeFieldDateMinutes']")
+							.val( opt.value.minutes );
+						
+						return {
+							row : $inputCtrl.closest("tr"),
+							control : $inputCtrl
+						};
+
+					default :
+						throw new Error();
+				}
+
+			} catch( e ) {
+				if ( opt.debug ) {
+					log("Incorrect column value. Please use a valid Display Name.");
+				}
+				return;
 			}
 		},
 		setProp = function( prop, v ) {
@@ -947,7 +1181,10 @@ var jQueryScript = document.createElement("script");
 
 		},
 		updateListItems = function( options ) {
-			var opt = options || {};
+			var opt = options || {},
+				//used to stop processing if alternate method found.
+				altMethodFound = false
+			;
 
 			if ( cacheSpUtilsCall( updateListItems, opt ) ) {
 				return;
@@ -957,64 +1194,75 @@ var jQueryScript = document.createElement("script");
 			try {
 				switch ( opt.op.toLowerCase() ) {
 					case "delete" :
+						altMethodFound = true;
 						spUtils.deleteListItems( opt );
 						break;
 
 					case "create" :
 					case "new" :
+						altMethodFound = true;
 						spUtils.createListItems( opt );
 						break;
 				}
-			} catch(e) {
+			} catch( e ) {
 
 			} finally {
-				if ( opt.op ) {
+				if ( altMethodFound ) {
 					return;
 				}
 			}
 
-			var context = getWebURL( opt ),
+			var context = getWebURL( opt.webUrl ),
 				targetList = findList( context, opt.listName ),
 				itemToUpdate
 			; //local vars
 
-			//Single item update
-			if ( opt.hasOwnProperty("id") ) {
-				var i = 0,
-					item = opt.valuePairs
 
-				; //local vars
+			//debugger;
 
-				itemToUpdate = targetList.getItemById( opt.id );
+			try {
+				//Single item update
+				if ( opt.hasOwnProperty("id") ) {
+					var i = 0,
+						item = opt.valuePairs
 
-				//debugger;
-				for ( ; i<item.length; i++ ) {
-					//log( item[ i ], item[ i + 1] );
-					setColumnVal( item[ i ][ 0 ], item[ i ][ 1 ], itemToUpdate );
+					; //local vars
 
-					//Leave this here Matt!!!!! Leave it alone.... I said DO NOT TOUCH!
-					itemToUpdate.update();
-				}
-			} else {
-				//Multi-update yabbage
-				for ( var prop in opt.updates ) {
-					if ( opt.updates.hasOwnProperty( prop ) ) {
-						var item = opt.updates[ prop ],
-							i = 0
-						; //local vars
+					itemToUpdate = targetList.getItemById( opt.id );
 
-						itemToUpdate = targetList.getItemById( prop );
+					//debugger;
+					for ( ; i<item.length; i++ ) {
+						//log( item[ i ], item[ i + 1] );
+						setColumnVal( item[ i ][ 0 ], item[ i ][ 1 ], itemToUpdate );
 
-						//debugger;
-						for ( ; i<item.valuePairs.length; i++ ) {
-							//log( item.valuePairs[ i ][ 0 ], item.valuePairs[ i ][ 1 ] );
-							setColumnVal( item.valuePairs[ i ][ 0 ], item.valuePairs[ i ][ 1 ], itemToUpdate );
+						//Leave this here Matt!!!!! Leave it alone.... I said DO NOT TOUCH!
+						itemToUpdate.update();
+					}
+				} else {
+					//Multi-update yabbage
+					for ( var prop in opt.updates ) {
+						if ( opt.updates.hasOwnProperty( prop ) ) {
+							var item = opt.updates[ prop ]
 
-							//Leave this here Matt!!!!! Leave it alone.... I said DO NOT TOUCH!
-							itemToUpdate.update();
+							; //local vars
+
+							itemToUpdate = targetList.getItemById( prop );
+
+							//debugger;
+							for ( var staticName in item ) {
+								if ( item.hasOwnProperty( staticName ) ) {
+									log( staticName + " : " + item[ staticName ] );
+									setColumnVal( staticName, item[ staticName ], itemToUpdate );
+
+									//Leave this here Matt!!!!! Leave it alone.... I said DO NOT TOUCH!
+									itemToUpdate.update();
+								}
+							}
 						}
 					}
 				}
+			} catch( e ) {
+
 			}
 
 			var successCallback = options.success || noop;
@@ -1072,10 +1320,10 @@ var jQueryScript = document.createElement("script");
 	}
 	if ( isJquery ) {
 		spUtils.getFormVal = getFormVal;
-		spUtils.setFormVal = setFormVal;
+		spUtils.setFormValue = setFormValue;
 	}
 
 	//Expose spUtils as a global object
-	window.spUtils = spUtils;
+	window[ _spUtils ] = spUtils;
 	//console.dir( "spBodyOnLoadFunctionNames: " + _spBodyOnLoadFunctionNames );
 })( window );

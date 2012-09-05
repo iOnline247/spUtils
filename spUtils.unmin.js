@@ -904,7 +904,7 @@ var clientContext = new SP.ClientContext.get_current(),
 				fieldTypeFound
 			;
 
-
+			//http://sputility.codeplex.com/documentation?referringTitle=Home <--- Got a few more to do with calendars.
 			//<!-- FieldName="Title" FieldInternalName="Title" FieldType="SPFieldText" --> ~ Single line text box
 			//<!-- FieldName="Priority" FieldInternalName="Priority" FieldType="SPFieldChoice" --> ~ Choice column
 			//<!-- FieldName="Assigned To" FieldInternalName="AssignedTo" FieldType="SPFieldUser" --> ~ People picker

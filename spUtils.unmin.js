@@ -37,7 +37,7 @@
 	// Use the correct document accordingly with window argument (sandbox)
 	//var document = window.document,
 	//	navigator = window.navigator,
-	var _spUtils = "spUtils", 
+	var _spUtils = "spUtils",
 		location = window.location,
 		_privy = "_spUtilsUnderscoredForAReason",
 		_internalProps = {}
@@ -172,13 +172,13 @@ var jQueryScript = document.createElement("script");
 				return true;
 			}
 		},
-		
-		
-		
+
+
+
 		//https://github.com/cowboy/grunt/blob/master/lib/grunt/utils.js#L50
-		
-		
-		
+
+
+
 		findList = function( ctx, listName ) {
 			return ctx.get_web().get_lists().getByTitle( listName );
 		},
@@ -921,15 +921,15 @@ var clientContext = new SP.ClientContext.get_current(),
 			} else {
 				$formBody = $("td.ms-formbody");
 			}
-			
+
 			//debugger;
-			
+
 			try {
 				$columnNode = $formBody.contents()
 					.filter(function() {
 						return this.nodeType === 8 && rcolumnName.test( this.nodeValue );
 					});
-					
+
 				columnComment = $columnNode[ 0 ].nodeValue.trim();
 				//Need to return SPFieldText or whatever it may be...
 				fieldTypeFound = columnComment.indexOf("FieldType=\"") + 11; //11 is added so the text will start with the "type" of column text.
@@ -945,7 +945,7 @@ var clientContext = new SP.ClientContext.get_current(),
 				switch( columnType.toLowerCase() ) {
 					case "spfieldtext" :
 						$inputCtrl.val( opt.value );
-						
+
 						return {
 							row : $inputCtrl.closest("tr"),
 							control : $inputCtrl
@@ -953,7 +953,7 @@ var clientContext = new SP.ClientContext.get_current(),
 
 					case "spfieldchoice" :
 						$selectCtrl.val( opt.value );
-						
+
 						return {
 							row : $selectCtrl.closest("tr"),
 							control : $selectCtrl
@@ -964,11 +964,11 @@ var clientContext = new SP.ClientContext.get_current(),
 							$control = $row.find("div[title='People Picker']"),
 							$checkNames = $row.find("img[Title='Check Names']:first")
 						; //local vars
-						
+
 						if ( opt.value.length > 0 ) {
 							$control.html( opt.value );
 						}
-						
+
 						if ( opt.checkNames ) {
 							$checkNames.click();
 						}
@@ -983,7 +983,7 @@ var clientContext = new SP.ClientContext.get_current(),
 						var $textArea = $("textarea[Title='" + opt.columnName + "']"),
 							$thisRow = $textArea.closest("tr")
 						; //local vars
-						
+
 						$textArea.val( opt.value );
 
 						return {
@@ -998,26 +998,26 @@ var clientContext = new SP.ClientContext.get_current(),
 							$removeButton = $multiSelectCtrl.closest("tr").find("button[id$='RemoveButton']"),
 							optionsToSelect = []
 						; //local vars
-						
+
 						$multiSelectCtrl.find("option").each(function( i, el ) {
 							var $this = $( this ),
 								optionText = $this.text().substring( $this.text().indexOf(" - ") + 3 )
 							; //local vars
-							
+
 							// .shift() array values off to save some loops.
 							if ( $.inArray( optionText, opt.value ) > -1 ) {
 								el.selected = true;
 								opt.value.shift();
 							}
-							
+
 							//Check here to see if array has any other values. If not, save time by dropping the $.each() iteration.
 							if ( opt.value.length === 0 ) {
 								return false;
 							}
 						});
-						
+
 						if ( opt.addSelected ) {
-							$addButton.click();						
+							$addButton.click();
 						}
 
 						return {
@@ -1033,13 +1033,13 @@ var clientContext = new SP.ClientContext.get_current(),
 							row : null,
 							control: null
 						};
-						
+
 						if ( $selectCtrl.length ) {
 							$selectCtrl.val( opt.value );
-							
+
 							returnObj.control = $selectCtrl;
 							returnObj.row = $selectCtrl.closest("tr");
-							
+
 						} else if ( $inputCtrl.length ) {
 							choices = $inputCtrl.attr("choices");
 							hiddenInput = $inputCtrl.attr("optHid");
@@ -1051,11 +1051,11 @@ var clientContext = new SP.ClientContext.get_current(),
 									$inputCtrl.val( choiceArray[ index - 1 ] );
 								}
 							}
-							
+
 							returnObj.control = $inputCtrl;
 							returnObj.row = $inputCtrl.closest("tr");
 						}
-						
+
 						return returnObj;
 
 					case "spfielddatetime" :
@@ -1066,7 +1066,7 @@ var clientContext = new SP.ClientContext.get_current(),
 						$inputCtrl.closest("tr")
 							.find("select[id$='DateTimeFieldDateMinutes']")
 							.val( opt.value.minutes );
-						
+
 						return {
 							row : $inputCtrl.closest("tr"),
 							control : $inputCtrl

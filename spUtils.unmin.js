@@ -52,98 +52,46 @@
 
 	//console.dir( _spBodyOnLoadFunctionNames );
 
-/*
+	/*
+		////
+		//	Dynamically load jQuery
+		////
+				var re = document.createElement('script'); re.type = 'text/javascript'; re.async = true;
+				re.src = url_;
+				var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(re, s);
 
 
-function AjaxRequest( options ) {
-	$.ajax({
-		async: options.isAsync,
-		url: options.queryURL,
-		//dataType: "xml",  <--- stripped due to publishing page xml parseerror. See link below
-		contentType: "text/xml;charset='utf-8'",
-		complete: function ( xData, Status ) {
-			var webPartMarkup = $( xData.responseText ).find( options.elementID ).html();
-			$( options.elementID ).html( webPartMarkup ).css({ opacity: 0.0 }).animate({ opacity: 1.0 }, options.effectDelay );
+		var jQueryScript = document.createElement("script");
+							jQueryScript.type = "text/javascript";
+							jQueryScript.src = “/_layouts/MyJSPath/myjsfile.js;
+							document.getElementsByTagName("head")[0].appendChild(jQueryScript);
+
+
+
+		Figure this out later
+
+		if ( typeof $ === 'undefined' ) {
+			//Borrowed from HTML5 Boilerplate
+			var g=document.createElement( 'script' ),
+				s=document.getElementsByTagName( 'script' )[ 0 ]
+			;//local vars
+
+			g.src='//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js';
+			s.parentNode.insertBefore( g, s );
 		}
-	});
-}
-
-function AjaxifyWebpart( options ) {
-	if ( options.elementID ) {
-		$( options.elementID ).html( options.waitMessage );
-		AjaxRequest( options );
-	} else {
-		$( "#MSO_ContentTable, #ctl00_MSO_ContentDiv" ).find( "td[id^='WebPartTitleWPQ'] span" ).each(function() {
-			if ( $( this ).text() == options.webPartTitle ) {
-				var $webPart = $( this ).closest( "table" ).closest( "tr" ).next().find( "div[id^='WebPartWPQ']:first" );
-				options.elementID = "#" + $webPart.attr( "id" );
-				$webPart.html( options.waitMessage );
-				AjaxRequest( options );
-				return false;
-			}
-		});
-	}
-}
-
-
-AjaxifyWebpart({
-	//ID of Web Part. Useful for Web Parts that have the name hidden.
-	//Remember to prefix your ID with: #
-	//elementID: "#WebPartWPQ2",
-	//Title of webpart. Yes, it is case sensitive!
-	webPartTitle: 'Quick Launch Accordion Overview',
-	//The twirly whirly feedback prop
-	waitMessage: "<table width='100%' align='center'><tr><td align='center'><img src='/_layouts/images/gears_an.gif' alt='Processing... Please wait...'/></td></tr></table>",
-	//The address you are pulling the webpart from.  window.location.href is the current URL
-	queryURL: window.location.href.split("?")[0],
-	//isAsync accepts: true or false  //For more info on asynchronous AJAX calls: http://api.jquery.com/jQuery.ajax/
-	isAsync: true,
-	//Number of milliseconds to delay the animation of the webpart
-	effectDelay: 1500
-});
-
-
-////
-//	Dynamically load jQuery
-////
-        var re = document.createElement('script'); re.type = 'text/javascript'; re.async = true;
-        re.src = url_;
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(re, s);
-
-
-var jQueryScript = document.createElement("script");
-                    jQueryScript.type = "text/javascript";
-                    jQueryScript.src = “/_layouts/MyJSPath/myjsfile.js;
-                    document.getElementsByTagName("head")[0].appendChild(jQueryScript);
-
-
-
-	Figure this out later
-
-	if ( typeof $ === 'undefined' ) {
-		//Borrowed from HTML5 Boilerplate
-		var g=document.createElement( 'script' ),
-			s=document.getElementsByTagName( 'script' )[ 0 ]
-		;//local vars
-
-		g.src='//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js';
-		s.parentNode.insertBefore( g, s );
-	}
-*/
-	//Sanbox SharePoint variables
+	*/
+	
+	// Sanbox SharePoint variables
 	var executeScript = ExecuteOrDelayUntilScriptLoaded,
 		//Booleans for environment checking
 		isJquery = ( $ || window.jQuery ) ? true : false,
-		//isSPServices = ( $ && $.fn.SPServices ) ? true : false,
-		//ternary op ~ boolean result.
-
 		isSP2010 = ( typeof executeScript === 'function' ) ? true : false,
 		isSP2013 = false,
-		//isRoboCAML = ( window.roboCAML ) ? true : false,
+		// isRoboCAML = ( window.roboCAML ) ? true : false,
 
-		//Used to search Static Names that are labeled as lookups.
+		// Used to search Static Names that are labeled as lookups.
 		rLookupCheck = /\{L\}/i,
-		//Used to search Static Names that are labeled as people pickers.
+		// Used to search Static Names that are labeled as people pickers.
 		rPeoplePicker = /\{P\}/i,
 
 		/***********************************************************
@@ -163,6 +111,15 @@ var jQueryScript = document.createElement("script");
 				onLoadFunctions[ i ]( onLoadFunctions[ i + 1 ] );
 			}
 		},
+		cacheFormNodes = function() {
+			if ( "length" in _internalProps[ _privy ].$formNodes && _internalProps[ _privy ].$formNodes.length > 0 ) {
+				// form already cached, lets return that.
+				return _internalProps[ _privy ].$formNodes;
+			} else {
+				// cache form nodes first time.
+				return _internalProps[ _privy ].$formNodes = $("td.ms-formbody");
+			}
+		},
 		/***********************************************************
 			Used to cache spUtil calls until sp.js has been loaded
 			// Look to refactor this using .apply() or .call() on cacheSpUtilsCall
@@ -173,15 +130,377 @@ var jQueryScript = document.createElement("script");
 				return true;
 			}
 		},
+		rescapeColumnName = function( opt ) {
+			var colNameEscapedForRegex = opt.columnName.replace( /([.?*+^$\\(){}-])/g, '\\$1' ), // Escape chars for rcolumnName
+				rcolumnName = new RegExp( "FieldName=\"" + colNameEscapedForRegex + "\"", "i" )
+
+			;
+			return rcolumnName;
+		},
+		findFormControl = function( opt, $inputCtrl, $selectCtrl ) {
+			// Function notes
+			// Not sure if $inputCtrl or $selectCtrl are needed.
+
+			//http://sputility.codeplex.com/documentation?referringTitle=Home <--- Got a few more to do with calendars.
+			//<!-- FieldName="Title" FieldInternalName="Title" FieldType="SPFieldText" --> ~ Single line text box
+			//<!-- FieldName="Priority" FieldInternalName="Priority" FieldType="SPFieldChoice" --> ~ Choice column
+			//<!-- FieldName="Contact Sources" FieldInternalName="ContactSources" FieldType="SPFieldMultiChoice" --> ~ Choice column checkboxes
+			//<!-- FieldName="Assigned To" FieldInternalName="AssignedTo" FieldType="SPFieldUser" --> ~ People picker
+			//<!-- FieldName="Description" FieldInternalName="Comment" FieldType="SPFieldNote" --> All multi lines of text
+			//<!-- FieldName="Related Issues" FieldInternalName="RelatedIssues" FieldType="SPFieldLookupMulti" --> MultiLookup
+			//<!-- FieldName="Related Project" FieldInternalName="RelatedProject" FieldType="SPFieldLookup" --> Single Lookup
+			//<!-- FieldName="Due Date" FieldInternalName="DueDate" FieldType="SPFieldDateTime" --> Date/Time
+			//<!-- FieldName="All Day Event" FieldInternalName="fAllDayEvent" FieldType="SPFieldAllDayEvent" --> Calendaring
+			//<!-- FieldName="Recurrence" FieldInternalName="fRecurrence" FieldType="SPFieldRecurrence" --> Calendaring
+			//<!-- FieldName="Workspace" FieldInternalName="WorkspaceLink" FieldType="SPFieldCrossProjectLink" --> Calendaring
+
+			var columnDetails = opt.columnDetails,
+				returnValue
+
+			;
+
+			switch( columnDetails.columnType.toLowerCase() ) {
+				case "spfieldtext" :
+					$inputCtrl.val( opt.value );
+					returnValue = opt.value || $inputCtrl.val();
+
+					return {
+						row : $inputCtrl.closest("tr"),
+						control : $inputCtrl,
+						value : returnValue
+					};
+
+				case "spfieldchoice" :
+
+					var $closestTable,
+						$closestTd = $columnNode.closest("td.ms-formbody"),
+						$selectCtrl = safeSelector( "select", opt.columnName, $closestTd ),
+						singleDdl = $selectCtrl.length === 1,
+						$ctrl = ( $closestTd.find("table:first").length > 0 ) ? $closestTd.find("table:first") : $selectCtrl,
+						$fillOutChoice = safeSelector( "select", opt.columnName + ": Choice Drop Down", $closestTd ),
+
+						// Booleans.
+						radioBtnsFound = $fillOutChoice.length === 0 && $ctrl.length > 0,
+						fillOutChoiceFound = $fillOutChoice.length === 1
+					;
+
+					// Simple drop down control w/ no fill-in option
+					if ( singleDdl ) {
+						$selectCtrl.val( opt.value );
+						returnValue = opt.value || $selectCtrl.val();
+
+						return {
+							row : $closestTd.closest("tr"),
+							control : $ctrl,
+							value : returnValue
+						};
+					}
+
+					// Radio button controls found
+					if ( radioBtnsFound ) {
+						safeSelector( "span", opt.value, $ctrl )
+							.find("input")
+							.prop("checked", true);
+
+						returnValue = opt.value || $ctrl.find("input[type='radio']:checked").val();
+
+						return {
+							row : $closestTd.closest("tr"),
+							control : $ctrl,
+							value : returnValue
+						};
+					}
+
+					// Fill in choice found.
+					if ( fillOutChoiceFound ) {
+						$fillOutChoice.val( opt.value );
+						returnValue = $fillOutChoice.val();
+
+						if ( $fillOutChoice.val() !== opt.value ) {
+							$ctrl
+								.find("input[value='FillInButton']")
+								.prop('checked', true)
+							;
+
+							// ugly, I know... :D
+							returnValue = safeSelector( "input", opt.columnName + " : Specify your own value:", $ctrl );
+							returnValue.val( opt.value );
+						}
+
+						// ugly, I know... :D
+						returnValue = opt.value || returnValue.val();
+
+						return {
+							row : $closestTd.closest("tr"),
+							control : $ctrl,
+							value : returnValue
+						};
+					}
+
+					// Nothing found. Needed for opt.debug mode.
+					return undefined;
+
+				case "spfieldmultichoice" :
+
+					debugger;
+
+					// COMMENT THIS FIELD...
+					// I DON"T KNOW WHAT THIS DOES... <--- Me @ 2 a.m. leaving a note for myself. ;D
+					var $container = columnDetails.$columnNode.closest("td.ms-formbody"),
+						isChecked = opt.check === true
+					;
+
+					for ( var i = 0; i < opt.value.length; i++ ) {
+						$container.find("span[title='" + opt.value[ i ] + "'").hide() // > input:first")
+							//.prop("checked", isChecked);
+					}
+					return {
+						row: $container.closest("tr"),
+						control: $container,
+						value :
+					};
+
+				case "spfielduser" :
+					var $row = columnDetails.$columnNode.closest("tr"),
+						$control = $row.find("div[title='People Picker']"),
+						$checkNames = $row.find("img[Title='Check Names']:first")
+					; //local vars
+
+					if ( opt.value.length > 0 ) {
+						$control.html( opt.value );
+					}
+
+					if ( opt.checkNames ) {
+						$checkNames.click();
+					}
+
+					return {
+						row : $row,
+						control : $control,
+						checkNames : $checkNames
+					};
+
+				case "spfieldnote" :
+					var $textArea = safeSelector( "textarea", opt.columnName ),
+						$thisRow = $textArea.closest("tr")
+					; //local vars
+
+					$textArea.val( opt.value );
+
+					return {
+						row : $thisRow,
+						control : $textArea
+					};
+
+				case "spfieldlookupmulti" :
+					var $multiSelectCtrl = safeSelector( "select", opt.columnName + " possible values" );
+						//$("select[title='" + opt.columnName + " possible values']"),
+						$selectedValues = safeSelector( "select", opt.columnName + " selected values" );
+						//$("select[title='" + opt.columnName + " selected values']"),
+						$addButton = $multiSelectCtrl.closest("tr").find("button[id$='AddButton']"),
+						$removeButton = $multiSelectCtrl.closest("tr").find("button[id$='RemoveButton']")
+						//optionsToSelect = []
+					; //local vars
+
+					if ( opt.value.length > 0 ) {
+						$multiSelectCtrl.find("option").each(function( i, el ) {
+							var $this = $( this ),
+								optionText = $this.text().substring( $this.text().indexOf(" - ") + 3 )
+							; //local vars
+
+							// .shift() array values off to save some loops.
+							if ( $.inArray( optionText, opt.value ) > -1 ) {
+								el.selected = true;
+								opt.value.shift();
+							}
+
+							//Check here to see if array has any other values. If not, save time by dropping the $.each() iteration.
+							if ( opt.value.length === 0 ) {
+								return false;
+							}
+						});
+					}
 
 
+					if ( opt.removeSelected ) {
+						$selectedValues.find("option").each(function( i, el ) {
+							var $this = $( this ),
+								optionText = $this.text().substring( $this.text().indexOf(" - ") + 3 )
+							; //local vars
 
-		//https://github.com/cowboy/grunt/blob/master/lib/grunt/utils.js#L50
+							//Remove only the values passed in or remove them all...
+							if ( opt.value > 0 ) {
+								// .shift() array values off to save some loops.
+								if ( $.inArray( optionText, opt.value ) > -1 ) {
+									el.selected = true;
+									opt.value.shift();
+								}
 
+								//Check here to see if array has any other values. If not, save time by dropping the $.each() iteration.
+								if ( opt.value.length === 0 ) {
+									return false;
+								}
+							} else {
+								el.selected = true;
+							}
+						});
 
+						//Click that button yo.
+						$removeButton.click();
+					}
 
+					if ( opt.addSelected ) {
+						$addButton.click();
+					}
+
+					return {
+						row : $multiSelectCtrl.closest("span").closest("tr"),
+						possibleValues : $multiSelectCtrl,
+						selectedValues : $selectedValues,
+						addButton : $addButton,
+						removeButton : $removeButton
+					};
+
+				case "spfieldlookup" :
+					var returnObj = {
+						row : null,
+						control: null
+					};
+
+					if ( $selectCtrl.length ) {
+						$selectCtrl.val( opt.value );
+
+						returnObj.control = $selectCtrl;
+						returnObj.row = $selectCtrl.closest("tr");
+
+					} else if ( $inputCtrl.length ) {
+						choices = $inputCtrl.attr("choices");
+						hiddenInput = $inputCtrl.attr("optHid");
+						$("input[id='" + hiddenInput + "']").attr( "value", opt.value );
+
+						choiceArray = choices.split("|");
+						for ( index = 1; index < choiceArray.length; index = index + 2 ) {
+							if ( choiceArray[ index ] == opt.value ) {
+								$inputCtrl.val( choiceArray[ index - 1 ] );
+							}
+						}
+
+						returnObj.control = $inputCtrl;
+						returnObj.row = $inputCtrl.closest("tr");
+					}
+
+					return returnObj;
+
+				case "spfielddatetime" :
+					$inputCtrl.val( opt.value.date );
+					$inputCtrl.closest("tr")
+						.find("select[id$='DateTimeFieldDateHours']")
+						.val( opt.value.hour.toUpperCase() );
+					$inputCtrl.closest("tr")
+						.find("select[id$='DateTimeFieldDateMinutes']")
+						.val( opt.value.minutes );
+
+					return {
+						row : $inputCtrl.closest("tr"),
+						control : $inputCtrl
+					};
+				/*/ Calendaring /*/
+				case "spfieldalldayevent" :
+					$inputCtrl = $formBody.find("input[id$='AllDayEventField']");
+					var isChecked = $inputCtrl.is(":checked"),
+						value = ( opt.value == 1 || opt.value === true || opt.value.toLowerCase() === "on" ) ? true : false
+					;
+
+					if ( !isChecked && value ) {
+						$inputCtrl.click();
+					} else if ( isChecked && !value ) {
+						$inputCtrl.click();
+					}
+
+					return {
+						row : $inputCtrl.closest("tr"),
+						control : $inputCtrl
+					};
+				case "spfieldrecurrence" :
+					$inputCtrl = $formBody.find("input[id$='RecurrenceField']");
+					var isChecked = $inputCtrl.is(":checked"),
+						value = ( opt.value == 1 || opt.value === true || opt.value.toLowerCase() === "on" ) ? true : false
+					;
+
+					if ( !isChecked && value ) {
+						$inputCtrl.click();
+					} else if ( isChecked && !value ) {
+						$inputCtrl.click();
+					}
+
+					return {
+						row : $inputCtrl.closest("tr"),
+						control : $inputCtrl
+					};
+
+				case "spfieldcrossprojectlink" :
+					$inputCtrl = $formBody.find("input[id$='CrossProjectLinkField']");
+					var isChecked = $inputCtrl.is(":checked"),
+						value = ( opt.value == 1 || opt.value === true || opt.value.toLowerCase() === "on" ) ? true : false
+					;
+
+					if ( !isChecked && value ) {
+						$inputCtrl.click();
+					} else if ( isChecked && !value ) {
+						$inputCtrl.click();
+					}
+/*
+					if ( isChecked && value ) {
+						$inputCtrl.prop("checked", false);
+					} else {
+						$inputCtrl.prop("checked", true);
+					}
+*/
+					return {
+						row : $inputCtrl.closest("tr"),
+						control : $inputCtrl
+					};
+				/*/ End Calendaring /*/
+				default :
+					throw new Error();
+			}
+		},
 		findList = function( ctx, listName ) {
 			return ctx.get_web().get_lists().getByTitle( listName );
+		},
+		getColumnDetails = function( opt ) {
+			var $columnNode,
+				columnComment,
+				fieldTypeFound,
+				columnType,
+				rcolumnName = rescapeColumnName( opt )
+
+			;
+			// var from method:
+			//
+
+			$columnNode = opt.$formBody.contents()
+				.filter(function() {
+					return this.nodeType === 8 && rcolumnName.test( this.nodeValue );
+				});
+
+			columnComment = $columnNode[ 0 ].nodeValue.trim();
+			//Need to return SPFieldText or whatever it may be...
+			fieldTypeFound = columnComment.indexOf("FieldType=\"") + 11; //11 is added so the text will start with the "type" of column text.
+
+			while( fieldTypeFound ) {
+				if ( columnComment.charAt( fieldTypeFound ) === "\"" ) {
+					break;
+				}
+				columnType += columnComment.charAt( fieldTypeFound );
+				fieldTypeFound++;
+			}
+
+			return {
+				$columnNode : $columnNode,
+				columnComment : columnComment,
+				columnType : columnType
+			};
 		},
 		getListItemsSucceeded = function( data, ctx ) {
 
@@ -197,7 +516,7 @@ var jQueryScript = document.createElement("script");
 				var listItem = enumerator.get_current();
 
 				// Here's your chance to do something awesome...
-				log( listItem.get_item("Title") );
+				log( listItem.get_item( "Title" ) );
 			}
 		},
 		noop = function() {
@@ -214,12 +533,21 @@ var jQueryScript = document.createElement("script");
 
 			log( msg );
 		},
-		//Determines what type of parameter is being passed
-		//http://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
+		// Determines what type of parameter is being passed
+		// http://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
 		toType = function( obj ) {
 			return ( {} ).toString.call( obj ).match(/\s([a-zA-Z]+)/)[ 1 ].toLowerCase();
 		},
+		// Allows jQuery selectors to handle special characters.
+		safeSelector = function( el, columnName, context ) {
+			if ( typeof context === "undefined" ) {
+				return $( el ).filter( function() { return this.title === columnName; });
+			}
+
+			return context.find( el ).filter( function() { return this.title === columnName; });
+		},
 		setColumnVal = function( staticName, itemValue, listItem ) {
+			// Used in conjuction with CSOM calls.  May have to rename to something more intuitive.
 			var result = false
 
 			; //local vars
@@ -452,15 +780,41 @@ var jQueryScript = document.createElement("script");
 			});
 		},
 */
-		//getValue seems nicer
-		getFormVal = function( columnName ) {
-			var ddlVal = $("select[title='" + columnName + "']").val();
+
+		getFormValue = function( options ) {
+			var defaults = {
+					value : "",
+					selector : options.columnName.replace(/[#;&,.+*~':"!^$[\]()=>|\/]/g, "\$&"), // escape chars for jQuery selector
+					cacheForm : true,
+					debug : false
+				},
+				opt = $.extend({}, defaults, options),
+				$formBody
+
+			;
+
+			if ( opt.cacheForm ) {
+				$formBody = cacheFormNodes();
+			} else {
+				// serve up some fresh DOM. Useful for forms that have nodes added/removed
+				$formBody = $("td.ms-formbody");
+			}
+
+			return
+
+/*
+			var ddlVal = $("select, input").filter(function(e) {
+				return this.title === columnName;
+			}).val();
+
 
 			if ( ddlVal === undefined ) {
 				ddlVal = $("input[title='" + columnName + "']").val();
 			}
 
 			return ddlVal;
+
+*/
 		},
 
 
@@ -604,6 +958,7 @@ var clientContext = new SP.ClientContext.get_current(),
 			opt.success = function() {
 				debugger;
 
+				// Need to fix this... Can't access listItems if a batch is sent.
 				var listItems = opt.listItems,
 					listItemsData = listItems.get_data(),
 					data = []
@@ -665,6 +1020,10 @@ var clientContext = new SP.ClientContext.get_current(),
 		*/
 
 			return ( webURL ) ?
+				//LOOK INTO .AppContextSite
+				// http://blog.appliedis.com/2012/12/19/sharepoint-2013-apps-accessing-data-in-the-host-web-in-a-sharepoint-hosted-app/
+				// currentcontext = new SP.ClientContext.get_current();
+				// new SP.AppContextSite(currentcontext, hostUrl);
 				SP.ClientContext( webURL ) :
 				SP.ClientContext.get_current();
 		},
@@ -870,16 +1229,26 @@ var clientContext = new SP.ClientContext.get_current(),
 			}
 		},
 		setFormValue = function( options ) {
-			// A modified version of:
+			// set lookup ~ inspiration derived from:
 			// http://geekswithblogs.net/SoYouKnow/archive/2011/04/06/setting-sharepoint-drop-down-lists-w-jquery---20-items.aspx
-			// No more global variables and needless DOM walking.
-			// A modified version of:
+			/***** Tweaks *****/
+				//No more global variables and needless DOM walking.
+				//Selector doesn't break when weird column names are used.
+
+			// people picker ~ inspiration derived from:
 			// http://sympmarc.com/2012/04/22/working-with-sharepoint-people-pickers-with-jquery-a-new-function-called-findpeoplepicker/
+			/***** Tweaks *****/
+				//Made to work with my selector engine.
+
+
 
 			var defaults = {
 					value : "",
+					selector : options.columnName.replace(/[#;&,.+*~':"!^$[\]()=>|\/]/g, "\$&"), // escape chars for jQuery selector
 					addSelected : true, //Used with multiSelect controls. Automatically adds selections to the right.
 					checkNames: true, //Used with people picker and resolves names.
+					freeFormChoiceCtrl: false, //Used with fill in choices. Set to true to find controls like these.
+					removeSelected: false, //Used with multi-select controls
 					cacheForm : true,
 					debug : false
 				},
@@ -888,9 +1257,13 @@ var clientContext = new SP.ClientContext.get_current(),
 				$columnNode,
 				columnComment,
 				columnType = "",
-				rcolumnName = new RegExp("FieldName=\"" + opt.columnName + "\"", "i"), //This regex has a bug w/ special chars... Will have to investigate.
-				$selectCtrl = $("select[title='" + opt.columnName + "']"),
-				$inputCtrl = $("input[title='" + opt.columnName + "']"),
+
+				//Use filter method to prevent issues with special characters and jQuery selectors.
+				$selectCtrl = $("select").filter(function(e) {
+					return this.title === opt.selector;
+				}),
+				//Use filter method to prevent issues with special characters and jQuery selectors.
+				$inputCtrl = safeSelector( "input", opt.selector ),
 				choices,
 				hiddenInput,
 				choiceArray,
@@ -898,181 +1271,23 @@ var clientContext = new SP.ClientContext.get_current(),
 				fieldTypeFound
 			;
 
-			//http://sputility.codeplex.com/documentation?referringTitle=Home <--- Got a few more to do with calendars.
-			//<!-- FieldName="Title" FieldInternalName="Title" FieldType="SPFieldText" --> ~ Single line text box
-			//<!-- FieldName="Priority" FieldInternalName="Priority" FieldType="SPFieldChoice" --> ~ Choice column
-			//<!-- FieldName="Assigned To" FieldInternalName="AssignedTo" FieldType="SPFieldUser" --> ~ People picker
-			//<!-- FieldName="Description" FieldInternalName="Comment" FieldType="SPFieldNote" --> All multi lines of text
-			//<!-- FieldName="Related Issues" FieldInternalName="RelatedIssues" FieldType="SPFieldLookupMulti" --> MultiLookup
-			//<!-- FieldName="Related Project" FieldInternalName="RelatedProject" FieldType="SPFieldLookup" --> Single Lookup
-			//<!-- FieldName="Due Date" FieldInternalName="DueDate" FieldType="SPFieldDateTime" --> Date/Time
-			if ( !!opt.cacheForm ) {
-				if ( "length" in _internalProps[ _privy ].$formNodes && _internalProps[ _privy ].$formNodes.length > 0 ) {
-					$formBody = _internalProps[ _privy ].$formNodes;
-				} else {
-					$formBody = _internalProps[ _privy ].$formNodes = $("td.ms-formbody");
-				}
+			if ( opt.cacheForm ) {
+				opt.$formBody = cacheFormNodes();
 			} else {
-				$formBody = $("td.ms-formbody");
+				// serve up some fresh DOM. Useful for forms that have nodes added/removed
+				opt.$formBody = $("td.ms-formbody");
 			}
 
 			//debugger;
 
 			try {
-				$columnNode = $formBody.contents()
-					.filter(function() {
-						return this.nodeType === 8 && rcolumnName.test( this.nodeValue );
-					});
-
-				columnComment = $columnNode[ 0 ].nodeValue.trim();
-				//Need to return SPFieldText or whatever it may be...
-				fieldTypeFound = columnComment.indexOf("FieldType=\"") + 11; //11 is added so the text will start with the "type" of column text.
-
-				while( fieldTypeFound ) {
-					if ( columnComment.charAt( fieldTypeFound ) === "\"" ) {
-						break;
-					}
-					columnType += columnComment.charAt( fieldTypeFound );
-					fieldTypeFound++;
-				}
-
-				switch( columnType.toLowerCase() ) {
-					case "spfieldtext" :
-						$inputCtrl.val( opt.value );
-
-						return {
-							row : $inputCtrl.closest("tr"),
-							control : $inputCtrl
-						};
-
-					case "spfieldchoice" :
-						$selectCtrl.val( opt.value );
-
-						return {
-							row : $selectCtrl.closest("tr"),
-							control : $selectCtrl
-						};
-
-					case "spfielduser" :
-						var $row = $columnNode.closest("tr"),
-							$control = $row.find("div[title='People Picker']"),
-							$checkNames = $row.find("img[Title='Check Names']:first")
-						; //local vars
-
-						if ( opt.value.length > 0 ) {
-							$control.html( opt.value );
-						}
-
-						if ( opt.checkNames ) {
-							$checkNames.click();
-						}
-
-						return {
-							row : $row,
-							control : $control,
-							checkNames : $checkNames
-						};
-
-					case "spfieldnote" :
-						var $textArea = $("textarea[Title='" + opt.columnName + "']"),
-							$thisRow = $textArea.closest("tr")
-						; //local vars
-
-						$textArea.val( opt.value );
-
-						return {
-							row : $thisRow,
-							control : $textArea
-						};
-
-					case "spfieldlookupmulti" :
-						var $multiSelectCtrl = $("select[title='" + opt.columnName + " possible values']"),
-							$selectedValues = $("select[title='" + opt.columnName + " selected values']"),
-							$addButton = $multiSelectCtrl.closest("tr").find("button[id$='AddButton']"),
-							$removeButton = $multiSelectCtrl.closest("tr").find("button[id$='RemoveButton']"),
-							optionsToSelect = []
-						; //local vars
-
-						$multiSelectCtrl.find("option").each(function( i, el ) {
-							var $this = $( this ),
-								optionText = $this.text().substring( $this.text().indexOf(" - ") + 3 )
-							; //local vars
-
-							// .shift() array values off to save some loops.
-							if ( $.inArray( optionText, opt.value ) > -1 ) {
-								el.selected = true;
-								opt.value.shift();
-							}
-
-							//Check here to see if array has any other values. If not, save time by dropping the $.each() iteration.
-							if ( opt.value.length === 0 ) {
-								return false;
-							}
-						});
-
-						if ( opt.addSelected ) {
-							$addButton.click();
-						}
-
-						return {
-							row : $multiSelectCtrl.closest("span").closest("tr"),
-							possibleValues : $multiSelectCtrl,
-							selectedValues : $selectedValues,
-							addButton : $addButton,
-							removeButton : $removeButton
-						};
-
-					case "spfieldlookup" :
-						var returnObj = {
-							row : null,
-							control: null
-						};
-
-						if ( $selectCtrl.length ) {
-							$selectCtrl.val( opt.value );
-
-							returnObj.control = $selectCtrl;
-							returnObj.row = $selectCtrl.closest("tr");
-
-						} else if ( $inputCtrl.length ) {
-							choices = $inputCtrl.attr("choices");
-							hiddenInput = $inputCtrl.attr("optHid");
-							$("input[id='" + hiddenInput + "']").attr( "value", opt.value );
-
-							choiceArray = choices.split("|");
-							for ( index = 1; index < choiceArray.length; index = index + 2 ) {
-								if ( choiceArray[ index ] == opt.value ) {
-									$inputCtrl.val( choiceArray[ index - 1 ] );
-								}
-							}
-
-							returnObj.control = $inputCtrl;
-							returnObj.row = $inputCtrl.closest("tr");
-						}
-
-						return returnObj;
-
-					case "spfielddatetime" :
-						$inputCtrl.val( opt.value.date );
-						$inputCtrl.closest("tr")
-							.find("select[id$='DateTimeFieldDateHours']")
-							.val( opt.value.hour.toUpperCase() );
-						$inputCtrl.closest("tr")
-							.find("select[id$='DateTimeFieldDateMinutes']")
-							.val( opt.value.minutes );
-
-						return {
-							row : $inputCtrl.closest("tr"),
-							control : $inputCtrl
-						};
-
-					default :
-						throw new Error();
-				}
+				opt.columnDetails = getColumnDetails( opt );
+				return findFormControl( opt, $inputCtrl, $selectCtrl );
+				//return findFormControl( $formBody, $columnNode, columnType, opt, $inputCtrl, $selectCtrl );
 
 			} catch( e ) {
 				if ( opt.debug ) {
-					log("Incorrect column value. Please use a valid Display Name.");
+					log("Incorrect column value: " + opt.columnName + "\n Please use a valid Display Name.");
 				}
 				return;
 			}
@@ -1080,6 +1295,13 @@ var clientContext = new SP.ClientContext.get_current(),
 		setProp = function( prop, v ) {
 			/***********************************
 				implementation needs help..
+
+				FOUND ANSWER:
+
+				http://davidwalsh.name/jquery-objects
+				^bada55 JavaScripter btw...
+
+
 				Want to be able to pass in a string that represent the properties; e.g:
 				prop1.List.anotherPropsVal
 				and then cache and return the value in the correct position
@@ -1316,7 +1538,7 @@ var clientContext = new SP.ClientContext.get_current(),
 		}, 'sp.js');
 	}
 	if ( isJquery ) {
-		spUtils.getFormVal = getFormVal;
+		spUtils.getFormValue = getFormValue;
 		spUtils.setFormValue = setFormValue;
 	}
 

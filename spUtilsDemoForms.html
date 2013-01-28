@@ -4,12 +4,26 @@
 
 <script type="text/javascript">
 $(document).ready(function() {
-
+/*
 	var $title = spUtils.setFormValue({
 		columnName: "Title",
 		value: "This is a title field!"
 	});
-	
+
+	var $category = spUtils.setFormValue({
+		columnName: "Category",
+		value: "somethings.aafldj",
+		freeFormChoiceCtrl: true
+	});
+
+	spUtils.getListItems({
+		listName: "spUtilsCalendar",
+		callback: function( data, ctx ) {
+			debugger;
+			console.dir( data );
+		}
+	});
+
 	var $description = spUtils.setFormValue({
 		columnName: "Description",
 		value: "<b>Something bold!</b> : <i>Something italic!!</i>", //html tags aren't working for some reason...
@@ -22,7 +36,7 @@ $(document).ready(function() {
 		debug: true
 	});
 	
-	spUtils.setFormValue({
+	var $dueDate = spUtils.setFormValue({
 		columnName: "Due Date",
 		value: {
 			date: "09/24/2012",
@@ -31,25 +45,49 @@ $(document).ready(function() {
 		},
 		debug: true
 	});
-	
+
 	var $multiSelect = spUtils.setFormValue({
 		columnName: "Related Issues",
 		value: ["2012-08-24T19:59:50Z", "Something will happen17"],
 		debug: true
 	});
 	
-	spUtils.setFormValue({
+	var $assignedTo = spUtils.setFormValue({
 		columnName: "Assigned To",
 		value: "dev\\Administrator; dev\\spUser",
 		checkNames: false,
 		debug: true
 	});
 	
+*/	
+/*
+	var $chkBoxes = spUtils.setFormValue({
+		columnName: "ChkBoxes",
+		value: ["Enter Choice #1", "Enter Choice #3"],
+		check: false,
+		debug: true
+	});
+*/
+/*
+	var $specialChars = spUtils.setFormValue({
+		columnName: "{P)(U#@(#@*(!@&)^&!~|_-.,%*_?***)!@*$#*(#@)$)}",
+		value: "I found you!",
+		debug: true
+	});
 	
-	
-	$description.row.hide();
+	-()*+?.,\\^$|#
+*/
+	var $specialChars = spUtils.setFormValue({
+		columnName: "-()*+?.,",
+		value: "I found you!",
+		debug: true
+	});
+
+
+	//$description.row.hide();
 	debugger;
 	//console.dir( $priority );
+
 });
 </script>
 
